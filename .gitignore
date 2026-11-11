@@ -46,3 +46,6 @@ next-env.d.ts
 /native/windows/node_modules
 /native/windows/src-tauri/target
 /native/windows/src-tauri/gen
+
+# Claude Code personal settings
+.claude/settings.local.json

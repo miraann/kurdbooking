@@ -10,7 +10,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test:unit": "node --test \"lib/**/*.test.mjs\"",
     "test:db": "node supabase/tests/db.test.mjs",
-    "test": "npm run test:unit && npm run test:db"
+    "test": "npm run test:unit && npm run test:db",
+    "db:migrate": "node scripts/db-migrate.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -31,6 +32,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
+    "pg": "^8.13.1",
     "tailwindcss": "4.3.3",
     "typescript": "^5"
   }
