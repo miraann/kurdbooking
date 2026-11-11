@@ -65,9 +65,11 @@ export async function bookAppointment(slug: string, raw: BookingInput): Promise<
   const { data: customer, error: customerError } = await admin
     .from("customers")
     .upsert({ shop_id: shop.id, full_name: input.name, phone }, { onConflict: "shop_id,phone" })
-    .select("id")
+    .select("id, blocked_at")
     .single();
   if (customerError || !customer) return { ok: false, message: e.saveFailed };
+  // The owner blocked this customer (the database refuses the booking too).
+  if (customer.blocked_at) return { ok: false, message: e.blocked };
 
   // Simple spam guard: one phone can't hold many future bookings at once.
   const { count } = await admin
@@ -104,6 +106,7 @@ export async function bookAppointment(slug: string, raw: BookingInput): Promise<
     .single();
 
   if (error?.code === "23P01") return taken;
+  if (error?.message?.includes("customer_blocked")) return { ok: false, message: e.blocked };
   if (error || !appointment) return { ok: false, message: e.insertFailed };
 
   // TODO (roadmap): push notification to the owner's apps (port lib/pushNotifications.ts from zhewar).

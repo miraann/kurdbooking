@@ -45,7 +45,7 @@ await db.exec(`
 `);
 
 // 0006 (pg_cron schedule) needs the cron extension, which PGlite doesn't have.
-for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql']) {
+for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql']) {
   try { await db.exec(readFileSync(new URL(f, MIG), 'utf8')); console.log('applied', f); }
   catch (e) { console.log('MIGRATION FAILED', f, e.message, e.position ?? ''); process.exit(1); }
 }
@@ -181,6 +181,113 @@ await as('authenticated', users.miran);
 await db.query(`select public.extend_trial($1, 7)`, [shopB]);
 await as(null);
 ok('extend_trial brings it back', (await db.query(`select status from public.shops where id=$1`, [shopB])).rows[0].status === 'trial');
+
+// ── Customer app: shop list («پیشاندان لە ئەپ») ────────────────────────────
+// Here shop A is active and shop B is back on trial.
+const listed = async (kind = null, search = null) =>
+  (await db.query(`select slug from public.listed_shops($1, $2)`, [kind, search])).rows.map((r) => r.slug).sort().join(',');
+await as('anon');
+ok('app list shows live listed shops', await listed() === 'ali-barber,sara');
+ok('app list filters by kind', await listed('salon') === 'sara');
+ok('app list searches by name', await listed(null, 'ali') === 'ali-barber');
+ok('app list search treats % literally', await listed(null, '%') === '');
+await as('authenticated', users.ali);
+await db.query(`select public.set_shop_listed($1, false)`, [shopA]);
+ok('ali turns off «پیشاندان لە ئەپ»', true);
+await expectError("ali cannot change Sara's switch", `select public.set_shop_listed($1, false)`, [shopB], 'forbidden');
+ok('ali cannot set hidden_by_admin directly', (await db.query(`update public.shops set hidden_by_admin=false where id=$1`, [shopA])).affectedRows === 0);
+await as('anon');
+ok('unlisted shop leaves the app list', await listed() === 'sara');
+ok('unlisted shop still opens by link', (await db.query(`select is_live from public.shop_by_slug('ali-barber')`)).rows[0]?.is_live === true);
+await as('authenticated', users.miran);
+await db.query(`update public.shops set hidden_by_admin=true where id=$1`, [shopB]);
+await as('anon');
+ok('super hides a shop from the app list', await listed() === '');
+await as('authenticated', users.miran);
+await db.query(`update public.shops set hidden_by_admin=false where id=$1`, [shopB]);
+await as('authenticated', users.ali);
+await db.query(`select public.set_shop_listed($1, true)`, [shopA]);
+
+// ── Customer accounts ──────────────────────────────────────────────────────
+await as(null);
+users.kawa = (await db.query(`insert into auth.users (email) values ('kawa@x.com') returning id`)).rows[0].id;
+const custB = (await db.query(`insert into public.customers (shop_id, full_name, phone) values ($1,'Other','9647709998877') returning id`, [shopB])).rows[0].id;
+const apptB = (await db.query(`insert into public.appointments (shop_id, customer_id, staff_id, duration_minutes, starts_at, ends_at)
+  values ($1,$2,$3,30,'2030-01-01 10:00+03','2030-01-01 10:30+03') returning id`, [shopB, custB, staffB])).rows[0].id;
+await as('authenticated', users.ali);
+await expectError('owner cannot link a customer to an account', `update public.customers set user_id=$1 where id=$2`, [users.kawa, cust], 'customer_link_forbidden');
+await expectError('owner cannot add a customer with an account', `insert into public.customers (shop_id, full_name, phone, user_id) values ($1,'X','9647700000001',$2)`, [shopA, users.kawa], 'customer_link_forbidden');
+await as(null);
+await db.query(`update public.customers set user_id=$1 where id=$2`, [users.kawa, cust]);
+ok('server links a customer to an account', true);
+await as('authenticated', users.kawa);
+const kawaAppts = await db.query(`select id, shop_id from public.appointments`);
+ok('customer reads only own bookings', kawaAppts.rows.length === 3 && kawaAppts.rows.every((r) => r.shop_id === shopA), JSON.stringify(kawaAppts.rows));
+ok('customer cannot read the customers table', (await db.query(`select * from public.customers`)).rows.length === 0);
+ok('customer cannot read shops directly', (await db.query(`select * from public.shops`)).rows.length === 0);
+const mine = await db.query(`select * from public.my_appointments()`);
+ok('my_appointments lists own bookings with shop name', mine.rows.length === 3 && mine.rows[0].shop_name === 'Ali Barber' && !!mine.rows[0].staff_name);
+ok('customer cannot change a booking directly', (await db.query(`update public.appointments set status='confirmed'`)).affectedRows === 0);
+const upcoming = mine.rows.find((r) => r.status === 'pending');
+await db.query(`select public.cancel_my_appointment($1)`, [upcoming.id]);
+ok('customer cancels own upcoming booking', (await db.query(`select status from public.my_appointments() where id=$1`, [upcoming.id])).rows[0].status === 'cancelled');
+await expectError("customer cannot cancel someone else's booking", `select public.cancel_my_appointment($1)`, [apptB], 'not_found');
+await expectError('customer cannot cancel twice', `select public.cancel_my_appointment($1)`, [upcoming.id], 'cannot_cancel');
+await as('authenticated', users.ali);
+ok("ali still sees none of Sara's bookings", (await db.query(`select * from public.appointments where shop_id=$1`, [shopB])).rows.length === 0);
+
+// ── Reviews ────────────────────────────────────────────────────────────────
+const pendingId = mine.rows.find((r) => r.status === 'pending' && r.id !== upcoming.id).id;
+await as('authenticated', users.kawa);
+await expectError('no review before the visit is completed', `select public.submit_review($1, 5)`, [pendingId], 'not_completed');
+await as(null);
+await db.query(`update public.appointments set status='completed' where id=$1`, [pendingId]);
+await as('authenticated', users.kawa);
+await expectError('rating must be 1–5', `select public.submit_review($1, 6)`, [pendingId], 'invalid_rating');
+const rev = (await db.query(`select * from public.submit_review($1, 5, ' Great cut ')`, [pendingId])).rows[0];
+ok('customer reviews a completed visit', rev?.rating === 5 && rev.body === 'Great cut' && rev.reviewer_name === 'Customer', JSON.stringify(rev));
+await expectError('one review per booking', `select public.submit_review($1, 1)`, [pendingId], 'already_reviewed');
+await expectError("customer cannot review someone else's booking", `select public.submit_review($1, 1)`, [apptB], 'not_found');
+await expectError('customer cannot insert a review directly', `insert into public.reviews (shop_id, rating) values ($1, 1)`, [shopA], 'row-level security');
+ok('customer cannot edit the review directly', (await db.query(`update public.reviews set rating=1`)).affectedRows === 0);
+const myRow = (await db.query(`select my_rating, can_review from public.my_appointments() where id=$1`, [pendingId])).rows[0];
+ok('my_appointments shows my rating', myRow.my_rating === 5 && myRow.can_review === false);
+await as('anon');
+const rating = (await db.query(`select * from public.shop_rating($1)`, [shopA])).rows[0];
+ok('public shop rating', Number(rating.rating_avg) === 5 && rating.rating_count === 1, JSON.stringify(rating));
+const pubRev = (await db.query(`select * from public.shop_reviews($1)`, [shopA])).rows;
+ok('public reviews: no account ids', pubRev.length === 1 && !('user_id' in pubRev[0]) && !('customer_id' in pubRev[0]));
+await expectError('anon cannot read the reviews table', `select * from public.reviews`, [], 'permission denied');
+ok('app list carries the rating', (await db.query(`select rating_count from public.listed_shops() where slug='ali-barber'`)).rows[0].rating_count === 1);
+await as('authenticated', users.sara);
+await expectError("sara cannot reply to Ali's review", `select public.reply_to_review($1, 'x')`, [rev.id], 'not_found');
+await as('authenticated', users.ali);
+await db.query(`select public.reply_to_review($1, 'Thank you!')`, [rev.id]);
+ok('owner replies to a review', (await db.query(`select reply from public.reviews where id=$1`, [rev.id])).rows[0].reply === 'Thank you!');
+await expectError('owner replies only once', `select public.reply_to_review($1, 'again')`, [rev.id], 'already_replied');
+ok('owner cannot delete a review', (await db.query(`delete from public.reviews where id=$1`, [rev.id])).affectedRows === 0);
+ok('owner cannot edit a review', (await db.query(`update public.reviews set rating=1 where id=$1`, [rev.id])).affectedRows === 0);
+await expectError('owner cannot hide a review', `select public.set_review_hidden($1, true)`, [rev.id], 'forbidden');
+await db.query(`delete from public.appointments where id=$1`, [pendingId]);
+ok('deleting the booking keeps the review', (await db.query(`select appointment_id from public.reviews where id=$1`, [rev.id])).rows[0]?.appointment_id === null);
+await as('authenticated', users.miran);
+await db.query(`select public.set_review_hidden($1, true)`, [rev.id]);
+await as('anon');
+ok('hidden review leaves the public rating', (await db.query(`select rating_count from public.shop_rating($1)`, [shopA])).rows[0].rating_count === 0);
+
+// ── Blocking a customer ────────────────────────────────────────────────────
+await as('authenticated', users.sara);
+ok("sara cannot block Ali's customer", (await db.query(`update public.customers set blocked_at=now() where id=$1`, [cust])).affectedRows === 0);
+await as('authenticated', users.ali);
+ok('owner blocks a customer', (await db.query(`update public.customers set blocked_at=now() where id=$1`, [cust])).affectedRows === 1);
+await as(null);
+await expectError('blocked customer cannot book', `insert into public.appointments (shop_id, customer_id, staff_id, duration_minutes, starts_at, ends_at)
+   values ($1,$2,$3,30,'2030-04-01 10:00+03','2030-04-01 10:30+03')`, [shopA, cust, staffA], 'customer_blocked');
+await as('authenticated', users.ali);
+await db.query(`update public.customers set blocked_at=null where id=$1`, [cust]);
+await as(null);
+await book('2030-04-01 10:00+03', '2030-04-01 10:30+03');
+ok('unblocked customer can book again', true);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

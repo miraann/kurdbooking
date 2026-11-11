@@ -269,6 +269,7 @@ const en: Dict = {
       taken: "This time isn't available. Please choose another time",
       saveFailed: "Saving failed. Please try again.",
       tooMany: "You already have several bookings. Please contact the shop.",
+      blocked: "Sorry, you can't book here. Please contact the shop.",
       insertFailed: "The appointment wasn't saved. Please try again.",
     },
   },

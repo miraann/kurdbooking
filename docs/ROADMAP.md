@@ -45,16 +45,22 @@ A separate app for customers (not the owner `/dashboard` app in `native/mobile`)
 
 **Flow:** open the app → list of shops (no login) → filter **Barbershops / Women's salons** → open any shop page and browse freely → tap *Book* → only now sign up or log in with phone number → finish the booking.
 
+- [x] **Database groundwork** (`0008_customer_app.sql`, tested in `supabase/tests/db.test.mjs`, applied live):
+  - `shops.listed` (owner switch, `set_shop_listed()`) and `shops.hidden_by_admin` (`/super`); `listed_shops(kind, search)` for the app home list, with rating
+  - `customers.user_id` (only the server links it), `customers.blocked_at` with a trigger that refuses bookings for blocked customers
+  - `my_appointments()` and `cancel_my_appointment()` for the logged-in customer
+  - `reviews` with `submit_review()`, `reply_to_review()`, `set_review_hidden()`, and public `shop_rating()` / `shop_reviews()`
+
 - [ ] Home screen: list of all active shops (not suspended/cancelled) with logo, name, rating; filter by type: هەموو / سەرتاشخانە / ئارایشتگای خانمان, and search by name. No city filter: launch is Sulaimani only (add `shops.city` later when other cities join)
-- [ ] «پیشاندان لە ئەپ» switch: new `shops.listed` column (default on). The owner turns it on/off in the dashboard; `/super` can also hide a shop. Hidden shops still work by link/QR
+- [ ] «پیشاندان لە ئەپ» switch: `shops.listed` column (default on) is done (`0008`); still needed: the switch in the dashboard and the hide button in `/super`. Hidden shops still work by link/QR
 - [ ] Shop page inside the app: same content as `/s/<slug>`, readable without an account
 - [ ] Customer accounts with Supabase Auth: **phone number + password**. Browsing needs no account; **an account is required only to book.**
   - Signup and "forgot password" verify the phone with a 6-digit code sent over **WhatsApp (Meta WhatsApp Cloud API)**, through Supabase's *Send SMS* auth hook (no Twilio).
   - Normal login is phone + password, so it sends no message and costs nothing.
   - Needs: Meta Business account, WhatsApp Business number, an approved *authentication* message template (Kurdish), access token stored as a secret.
   - Cost: about $0.008 per code in Iraq (check Meta's live rate card); SMS fallback can be added later for customers without WhatsApp.
-- [ ] Link the account to the `customers` row of each shop it books at (new migration, e.g. `customers.user_id`, plus RLS and tests)
-- [ ] RLS: a customer reads only their own appointments, in every shop; `customers` and `appointments` stay non-public otherwise
+- [x] Link the account to the `customers` row of each shop it books at (`customers.user_id`, `0008`)
+- [x] RLS: a customer reads only their own appointments, in every shop; `customers` and `appointments` stay non-public otherwise
 - [ ] Booking flow asks for login at the moment of booking (keeps the chosen service/staff/time through signup), both on `/s/<slug>/book` and in the app; `book/actions.ts` takes the customer from the session, not from the form
 - [ ] "My bookings": history across all shops, with status (چاوەڕوان / پەسەندکراوە / هەڵوەشاوە / تەواوبوو / نەهات)
 - [ ] Customer cancels their own upcoming booking
