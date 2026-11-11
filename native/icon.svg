@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Placeholder app icon in the zhewar admin colours (indigo-600 → violet-600)
+       with a white calendar + check. Replace with the final logo, then re-run
+       the icon commands in native/README.md. -->
+  <defs>
+    <linearGradient id="bg" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+  <rect x="232" y="276" width="560" height="500" rx="72" fill="none" stroke="#ffffff" stroke-width="56"/>
+  <line x1="232" y1="420" x2="792" y2="420" stroke="#ffffff" stroke-width="56"/>
+  <line x1="384" y1="212" x2="384" y2="320" stroke="#ffffff" stroke-width="56" stroke-linecap="round"/>
+  <line x1="640" y1="212" x2="640" y2="320" stroke="#ffffff" stroke-width="56" stroke-linecap="round"/>
+  <polyline points="392,598 482,684 652,520" fill="none" stroke="#ffffff" stroke-width="60" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

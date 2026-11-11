@@ -1,0 +1,6 @@
+{
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "files.associations": { "*.css": "tailwindcss" },
+  "editor.quickSuggestions": { "strings": "on" },
+  "search.exclude": { "**/.next": true, "native/mobile/android": true, "native/mobile/ios": true, "native/windows/src-tauri/target": true }
+}

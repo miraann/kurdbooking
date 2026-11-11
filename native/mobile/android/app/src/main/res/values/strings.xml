@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">KurdBooking</string>
+    <string name="title_activity_main">KurdBooking</string>
+    <string name="package_name">com.kurdbooking.owner</string>
+    <string name="custom_url_scheme">com.kurdbooking.owner</string>
+</resources>
