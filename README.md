@@ -89,6 +89,8 @@ Online payment (FIB / ZainCash APIs) is in the roadmap. Stripe doesn't work in I
 2. Add the variables from `.env.local` in **Settings → Environment Variables**, and set `NEXT_PUBLIC_SITE_URL` to the Vercel address.
 3. Deploy. Shops live at `https://<project>.vercel.app/s/<slug>` until you have a domain.
 
+`vercel.json` pins the framework to Next.js, and `.vercelignore` leaves `native/` out of the upload. Keep both: without them Vercel finds the Rust crate in `native/windows/src-tauri` and tries to build the Windows app, which fails on Linux (`gdk-3.0` not found).
+
 ### When you buy the domain
 
 1. In Vercel, go to **Settings → Domains** and add `kurdbooking.com` (or whatever you buy), `www.kurdbooking.com` and **`*.kurdbooking.com`**.

@@ -1,0 +1,4 @@
+# The Android/iOS (Capacitor) and Windows (Tauri, Rust) apps are built on their
+# own machines, not on Vercel. Without this, Vercel finds the Cargo.toml in
+# native/windows/src-tauri and tries to compile the desktop app on Linux.
+/native
