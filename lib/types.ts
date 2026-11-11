@@ -34,6 +34,10 @@ export interface Shop {
   custom_domain: string | null;
   timezone: string;
   owner_id: string | null;
+  /** Owner switch «پیشاندان لە ئەپ» (customer app shop list). */
+  listed: boolean;
+  /** Super admin hid the shop from the customer app list. */
+  hidden_by_admin: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -174,6 +178,38 @@ export interface Customer {
   full_name: string;
   phone: string;
   notes: string | null;
+  /** Customer app account (set by the server only). */
+  user_id: string | null;
+  /** Set when the owner blocked this customer. */
+  blocked_at: string | null;
+  created_at: string;
+}
+
+/** A review as the shop and the super admin read it (0008). */
+export interface Review {
+  id: string;
+  shop_id: string;
+  appointment_id: string | null;
+  customer_id: string | null;
+  user_id: string | null;
+  reviewer_name: string;
+  rating: number;
+  body: string | null;
+  reply: string | null;
+  replied_at: string | null;
+  is_hidden: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** What the public sees of a review (shop_reviews()). */
+export interface PublicReview {
+  id: string;
+  reviewer_name: string;
+  rating: number;
+  body: string | null;
+  reply: string | null;
+  replied_at: string | null;
   created_at: string;
 }
 

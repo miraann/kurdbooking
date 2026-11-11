@@ -10,7 +10,7 @@ import { echoValues, FieldError, parseFields, removeImages } from "@/lib/fields.
 import type { ActionState } from "@/lib/fields";
 import { isResourceKey, RESOURCES, type ResourceKey } from "@/lib/resources";
 import { withShopOptions } from "@/lib/resources.server";
-import { BOOKING_FIELDS, PROFILE_FIELDS } from "@/lib/forms";
+import { APP_FIELDS, BOOKING_FIELDS, PROFILE_FIELDS, REPLY_FIELDS } from "@/lib/forms";
 import { shopSlugTag, shopTag } from "@/lib/shop-data";
 import { userMessage } from "@/lib/errors";
 import { digits, fill } from "@/lib/format";
@@ -138,6 +138,22 @@ export async function saveBookingSettings(_prev: ActionState, formData: FormData
   return saved(lang);
 }
 
+/** «پیشاندان لە ئەپ»: show the shop in the customer app list (0008 set_shop_listed). */
+export async function saveAppListing(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { lang } = await getActionI18n();
+  const { shop } = await requireShop(["owner", "manager"]);
+  const supabase = await createClient();
+  try {
+    const { listed } = await parseFields(APP_FIELDS, formData, { lang, isNew: false });
+    const { error } = await supabase.rpc("set_shop_listed", { p_shop_id: shop.id, p_listed: listed === true });
+    if (error) throw error;
+  } catch (e) {
+    return { ok: false, message: userMessage(e, lang), nonce: Date.now() };
+  }
+  refresh();
+  return saved(lang);
+}
+
 // ── Weekly hours ───────────────────────────────────────────────────────────
 
 const TIME = /^\d{2}:\d{2}$/;
@@ -188,6 +204,43 @@ export async function setAppointmentStatus(id: string, status: AppointmentStatus
   if (error) return { ok: false, message: userMessage(error, lang) };
   refresh();
   return { ok: true };
+}
+
+// ── Customers: block / unblock ─────────────────────────────────────────────
+
+/** A blocked customer can't book at this shop (the database refuses it too). */
+export async function setCustomerBlocked(customerId: string, blocked: boolean): Promise<ActionState> {
+  const { lang } = await getActionI18n();
+  const { shop } = await requireShop(["owner", "manager"]);
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("customers")
+    .update({ blocked_at: blocked ? new Date().toISOString() : null })
+    .eq("id", customerId)
+    .eq("shop_id", shop.id);
+  if (error) return { ok: false, message: userMessage(error, lang) };
+  refresh();
+  return { ok: true };
+}
+
+// ── Reviews ────────────────────────────────────────────────────────────────
+
+/** The owner or a manager replies once (0008 reply_to_review checks the shop). */
+export async function replyToReview(reviewId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { lang } = await getActionI18n();
+  const { shop } = await requireShop(["owner", "manager"]);
+  const supabase = await createClient();
+  try {
+    const { reply } = await parseFields(REPLY_FIELDS, formData, { lang, isNew: true });
+    const { data: review } = await supabase.from("reviews").select("id").eq("id", reviewId).eq("shop_id", shop.id).maybeSingle();
+    if (!review) throw new FieldError(DICTS[lang].common.unknown);
+    const { error } = await supabase.rpc("reply_to_review", { p_review_id: reviewId, p_reply: reply });
+    if (error) throw error;
+  } catch (e) {
+    return { ok: false, message: userMessage(e, lang), values: echoValues(REPLY_FIELDS, formData), nonce: Date.now() };
+  }
+  afterChange(shop.id); // the reply shows on the public shop page
+  return saved(lang);
 }
 
 // ── Session ────────────────────────────────────────────────────────────────

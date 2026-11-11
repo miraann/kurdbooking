@@ -1,5 +1,5 @@
 import {
-  CalendarCheck, CalendarClock, Contact, CreditCard, Home, Images, LayoutGrid, Megaphone, Palette, Scissors, Settings, Users,
+  CalendarCheck, CalendarClock, Contact, CreditCard, Home, Images, LayoutGrid, Megaphone, Palette, Scissors, Settings, Star, Users,
 } from "lucide-react";
 import type { T3 } from "@/lib/i18n/config";
 
@@ -14,6 +14,7 @@ export const DASHBOARD_LINKS: { href: string; label: T3; short: T3; icon: typeof
   { href: "/dashboard/staff", label: { ckb: "کارمەندان", ar: "الموظفون", en: "Staff" }, short: { ckb: "کارمەند", ar: "الموظفون", en: "Staff" }, icon: Users, tab: false },
   { href: "/dashboard/gallery", label: { ckb: "گالەری", ar: "المعرض", en: "Gallery" }, short: { ckb: "گالەری", ar: "المعرض", en: "Gallery" }, icon: Images, tab: false },
   { href: "/dashboard/posts", label: { ckb: "پۆستەکان", ar: "المنشورات", en: "Posts" }, short: { ckb: "پۆست", ar: "المنشورات", en: "Posts" }, icon: Megaphone, tab: false },
+  { href: "/dashboard/reviews", label: { ckb: "هەڵسەنگاندنەکان", ar: "التقييمات", en: "Reviews" }, short: { ckb: "هەڵسەنگاندن", ar: "التقييمات", en: "Reviews" }, icon: Star, tab: false },
   { href: "/dashboard/contact", label: { ckb: "پەیوەندی و شوێن", ar: "التواصل والموقع", en: "Contact and location" }, short: { ckb: "پەیوەندی", ar: "التواصل", en: "Contact" }, icon: Contact, tab: false },
   { href: "/dashboard/profile", label: { ckb: "ناسنامە و ڕەنگ", ar: "الهوية والألوان", en: "Profile and colours" }, short: { ckb: "پرۆفایل", ar: "الهوية", en: "Profile" }, icon: Palette, tab: false },
   { href: "/dashboard/settings", label: { ckb: "ڕێکخستنەکان", ar: "الإعدادات", en: "Settings" }, short: { ckb: "ڕێکخستن", ar: "الإعدادات", en: "Settings" }, icon: Settings, tab: false },

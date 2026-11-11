@@ -19,6 +19,14 @@ export function userMessage(e: unknown, lang: Lang): string {
       return t.slotTaken;
     case "42501":
       return t.forbidden;
+    case "P0001": {
+      // Named errors raised by the database functions (0008).
+      const msg = String((e as { message?: string }).message ?? "");
+      if (msg.includes("already_replied")) return t.alreadyReplied;
+      if (msg.includes("customer_blocked")) return t.customerBlocked;
+      if (msg.includes("empty_reply")) return t.invalidData;
+      break;
+    }
   }
   console.error(e);
   return t.generic;

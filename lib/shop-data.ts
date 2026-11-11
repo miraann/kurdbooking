@@ -2,7 +2,7 @@ import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 import type {
-  GalleryPhoto, Location, Post, PublicShop, Service, ShopProfile, SocialLink, Staff, WorkingHours,
+  GalleryPhoto, Location, Post, PublicReview, PublicShop, Service, ShopProfile, SocialLink, Staff, WorkingHours,
 } from "@/lib/types";
 
 // Cached reads for the public shop pages. They use the public client (no
@@ -21,6 +21,34 @@ export async function getPublicShop(slug: string): Promise<PublicShop | null> {
   const { data, error } = await createPublicClient().rpc("shop_by_slug", { p_slug: slug }).maybeSingle();
   if (error) throw error;
   return (data as PublicShop | null) ?? null;
+}
+
+export interface ShopReviews {
+  /** Average of the visible reviews, one decimal; null when there are none. */
+  avg: number | null;
+  count: number;
+  latest: PublicReview[];
+}
+
+/** Rating and the newest visible reviews (0008 shop_rating / shop_reviews). */
+export async function getShopReviews(shopId: string): Promise<ShopReviews> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(shopTag(shopId));
+
+  const sb = createPublicClient();
+  const [rating, latest] = await Promise.all([
+    sb.rpc("shop_rating", { p_shop_id: shopId }).maybeSingle(),
+    sb.rpc("shop_reviews", { p_shop_id: shopId, p_limit: 12 }),
+  ]);
+  if (rating.error) throw rating.error;
+  if (latest.error) throw latest.error;
+  const r = rating.data as { rating_avg: number | string | null; rating_count: number } | null;
+  return {
+    avg: r?.rating_avg == null ? null : Number(r.rating_avg),
+    count: r?.rating_count ?? 0,
+    latest: (latest.data ?? []) as PublicReview[],
+  };
 }
 
 export interface ShopContent {

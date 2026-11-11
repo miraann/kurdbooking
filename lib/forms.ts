@@ -30,6 +30,24 @@ export const BOOKING_FIELDS: Field[] = [
   { name: "max_days_ahead", label: { ckb: "تا چەند ڕۆژ دواتر دەتوانرێت کات بگیرێت", ar: "الحجز مسموح حتى كم يوماً مقدماً", en: "How many days ahead people can book" }, type: "number", required: true, min: 1, max: 365 },
 ];
 
+export const APP_FIELDS: Field[] = [
+  {
+    name: "listed",
+    label: { ckb: "پیشاندان لە ئەپ", ar: "الظهور في التطبيق", en: "Show in the app" },
+    help: {
+      ckb: "کاتێک کراوەیە، دوکانەکەت لە لیستی دوکانەکانی ئەپی کڕیاران دەردەکەوێت. بە لینک و QR هەمیشە دەکرێتەوە.",
+      ar: "عند التفعيل يظهر محلك في قائمة المحلات في تطبيق الزبائن. يفتح دائماً عبر الرابط وQR.",
+      en: "When on, your shop appears in the shop list of the customer app. It always opens by link and QR.",
+    },
+    type: "checkbox",
+    defaultChecked: true,
+  },
+];
+
+export const REPLY_FIELDS: Field[] = [
+  { name: "reply", label: { ckb: "وەڵام (تەنها یەک جار)", ar: "الرد (مرة واحدة فقط)", en: "Reply (once only)" }, type: "textarea", required: true, maxLength: 1000 },
+];
+
 export const PLAN_FIELDS: Field[] = [
   { name: "name", label: { ckb: "ناوی پلان", ar: "اسم الباقة", en: "Plan name" }, type: "text", required: true, maxLength: 60 },
   { name: "price_iqd", label: PRICE, type: "number", required: true, min: 0, step: 250 },

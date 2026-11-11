@@ -1,11 +1,12 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { CalendarPlus, Clock, ExternalLink, MapPin, MessageCircle, Phone, Scissors, Search, Sparkles } from "lucide-react";
-import { getPublicShop, getShopContent, isValidSlug } from "@/lib/shop-data";
+import { getPublicShop, getShopContent, getShopReviews, isValidSlug } from "@/lib/shop-data";
 import { shopBasePath } from "@/lib/tenant";
-import { displayPhone, whatsappLink } from "@/lib/format";
+import { displayPhone, fill, whatsappLink } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { SOCIAL_PLATFORM } from "@/lib/labels";
+import { Stars } from "@/components/ui/Stars";
 
 // Public shop home, in the zhewar home-page style: centred hero with the logo
 // in a rotating two-colour ring, red→blue divider, blue "book" + red "my
@@ -31,7 +32,9 @@ export default async function ShopHome({ params }: PageProps<"/[lang]/s/[shop]">
   const { shop: slug } = await params;
   const shop = await getPublicShop(slug);
   if (!shop) return null; // ShopFrame already shows not-found / closed
-  const [c, base, { lang, t, f, href }] = await Promise.all([getShopContent(shop.id), shopBasePath(slug), getI18n()]);
+  const [c, reviews, base, { lang, t, f, href }] = await Promise.all([
+    getShopContent(shop.id), getShopReviews(shop.id), shopBasePath(slug), getI18n(),
+  ]);
   const s = t.shop;
   const p = c.profile;
   const primaryLocation = c.locations.find((l) => l.is_primary) ?? c.locations[0];
@@ -77,6 +80,14 @@ export default async function ShopHome({ params }: PageProps<"/[lang]/s/[shop]">
           </div>
 
           {p?.tagline && <p className="text-balance px-2 text-[0.95rem] font-medium leading-relaxed text-neutral-500">{p.tagline}</p>}
+
+          {reviews.avg != null && (
+            <a href="#reviews" className="flex items-center gap-2 text-sm text-neutral-500">
+              <Stars rating={reviews.avg} />
+              <span className="font-bold text-neutral-900">{f.num(reviews.avg.toFixed(1))}</span>
+              <span>({fill(s.reviewsCount, { n: f.num(reviews.count) })})</span>
+            </a>
+          )}
 
           {p?.booking_enabled && (
             <Link href={href(`${base}/book`)} className="btn-shop w-full">
@@ -186,6 +197,40 @@ export default async function ShopHome({ params }: PageProps<"/[lang]/s/[shop]">
               ))}
             </ul>
           </Section>
+        )}
+
+        {/* ── Reviews (written in the customer app after a completed visit) ── */}
+        {reviews.latest.length > 0 && (
+          <div id="reviews" className="scroll-mt-20">
+            <Section eyebrow="REVIEWS" title={s.reviews}>
+              {reviews.avg != null && (
+                <p className="-mt-4 mb-6 flex items-center justify-center gap-2 text-sm text-neutral-500">
+                  <Stars rating={reviews.avg} className="size-5" />
+                  <span className="text-lg font-bold text-neutral-900">{f.num(reviews.avg.toFixed(1))}</span>
+                  <span>({fill(s.reviewsCount, { n: f.num(reviews.count) })})</span>
+                </p>
+              )}
+              <ul className="grid gap-3 sm:grid-cols-2">
+                {reviews.latest.map((r) => (
+                  <li key={r.id} className="space-y-2 rounded-3xl border border-neutral-100 bg-white p-5 shadow-md-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold">{r.reviewer_name || "—"}</span>
+                      <Stars rating={r.rating} />
+                    </div>
+                    <span className="sr-only">{f.num(r.rating)} / {f.num(5)}</span>
+                    {r.body && <p className="whitespace-pre-line text-sm leading-7 text-neutral-600">{r.body}</p>}
+                    <p className="text-xs text-neutral-400">{f.shortDate(r.created_at, shop.timezone)}</p>
+                    {r.reply && (
+                      <div className="rounded-2xl bg-neutral-50 p-3 text-sm">
+                        <p className="mb-1 text-xs font-semibold" style={{ color: "var(--shop-primary)" }}>{s.shopReply}</p>
+                        <p className="whitespace-pre-line text-neutral-600">{r.reply}</p>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          </div>
         )}
 
         {/* ── About ── */}

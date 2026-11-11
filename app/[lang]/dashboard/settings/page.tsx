@@ -1,8 +1,8 @@
 import { requireShop } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { BOOKING_FIELDS } from "@/lib/forms";
+import { APP_FIELDS, BOOKING_FIELDS } from "@/lib/forms";
 import { getI18n } from "@/lib/i18n/server";
-import { saveBookingSettings } from "@/app/[lang]/dashboard/actions";
+import { saveAppListing, saveBookingSettings } from "@/app/[lang]/dashboard/actions";
 import { FieldsForm } from "@/components/forms/FieldsForm";
 import { ResourceEditor } from "@/components/dashboard/ResourceEditor";
 
@@ -24,6 +24,14 @@ export default async function SettingsPage() {
         <h2 className="text-lg font-bold">{s.booking}</h2>
         <div className="card">
           <FieldsForm action={saveBookingSettings} fields={BOOKING_FIELDS} defaults={profile ?? undefined} submitLabel={t.common.save} />
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-bold">{s.app}</h2>
+        <div className="card space-y-3">
+          {shop.hidden_by_admin && <p className="rounded-2xl bg-amber-50 p-3 text-sm text-amber-800">{s.hiddenByAdmin}</p>}
+          <FieldsForm action={saveAppListing} fields={APP_FIELDS} defaults={{ listed: shop.listed }} submitLabel={s.appSave} columns={1} />
         </div>
       </section>
 

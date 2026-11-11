@@ -52,7 +52,7 @@ A separate app for customers (not the owner `/dashboard` app in `native/mobile`)
   - `reviews` with `submit_review()`, `reply_to_review()`, `set_review_hidden()`, and public `shop_rating()` / `shop_reviews()`
 
 - [ ] Home screen: list of all active shops (not suspended/cancelled) with logo, name, rating; filter by type: هەموو / سەرتاشخانە / ئارایشتگای خانمان, and search by name. No city filter: launch is Sulaimani only (add `shops.city` later when other cities join)
-- [ ] «پیشاندان لە ئەپ» switch: `shops.listed` column (default on) is done (`0008`); still needed: the switch in the dashboard and the hide button in `/super`. Hidden shops still work by link/QR
+- [x] «پیشاندان لە ئەپ» switch: `shops.listed` (default on), switch in Dashboard → Settings; `/super` shop page can hide a shop from the app. Hidden shops still work by link/QR
 - [ ] Shop page inside the app: same content as `/s/<slug>`, readable without an account
 - [ ] Customer accounts with Supabase Auth: **phone number + password**. Browsing needs no account; **an account is required only to book.**
   - Signup and "forgot password" verify the phone with a 6-digit code sent over **WhatsApp (Meta WhatsApp Cloud API)**, through Supabase's *Send SMS* auth hook (no Twilio).
@@ -65,8 +65,8 @@ A separate app for customers (not the owner `/dashboard` app in `native/mobile`)
 - [ ] "My bookings": history across all shops, with status (چاوەڕوان / پەسەندکراوە / هەڵوەشاوە / تەواوبوو / نەهات)
 - [ ] Customer cancels their own upcoming booking
 - [ ] Open a shop by link/QR, saved favourite shops
-- [ ] **Block a customer** (per shop): owner blocks a customer account from the booking list; a blocked customer can't book at that shop (checked in `book/actions.ts` and by the database). The dashboard suggests blocking after 2–3 no-shows (نەهات). Unblock any time
-- [ ] **Ratings & reviews**: only for a booking marked تەواوبوو, one per booking, 1–5 stars + optional text. Average and count on the shop card and shop page. The owner can reply once; `/super` can hide abusive reviews (owners can't delete reviews)
+- [ ] **Block a customer** (per shop) — *done on the shop side*: database rule, Block/Unblock in the bookings list (shown for no-shows and after 2+ no-shows), blocked badge, clear message on the booking page. Still needed: the customer app side. owner blocks a customer account from the booking list; a blocked customer can't book at that shop (checked in `book/actions.ts` and by the database). The dashboard suggests blocking after 2–3 no-shows (نەهات). Unblock any time
+- [ ] **Ratings & reviews** — *done on the shop side*: Dashboard → Reviews (reply once), rating + reviews on the public shop page, hide/show in `/super`. Still needed: the writing screen in the customer app. only for a booking marked تەواوبوو, one per booking, 1–5 stars + optional text. Average and count on the shop card and shop page. The owner can reply once; `/super` can hide abusive reviews (owners can't delete reviews)
 - [ ] Push to customers when status changes (confirmed, declined, reminder)
 - [ ] Capacitor project for the customer app, its own icon, splash and store listing
 - [ ] Move the device-saved "my bookings" and receipt tokens over to the account
