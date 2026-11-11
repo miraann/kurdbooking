@@ -6,7 +6,7 @@ import { shopBasePath } from "@/lib/tenant";
 import { env } from "@/lib/env";
 import { getI18n } from "@/lib/i18n/server";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
-import { ShopStrip } from "@/components/shop/theme";
+import { ShopStrip, StripeBackground } from "@/components/shop/theme";
 
 /**
  * Wraps every public shop page: finds the shop, applies its colours, shows
@@ -37,7 +37,8 @@ export async function ShopFrame({ params, children }: { params: Promise<{ shop: 
   } as React.CSSProperties;
 
   return (
-    <div style={style} className="min-h-dvh bg-white text-neutral-900">
+    <div style={style} className="relative isolate min-h-dvh text-neutral-900">
+      <StripeBackground />
       <header className="sticky top-0 z-50 border-b border-neutral-200 bg-white/90 shadow-sm backdrop-blur-md">
         <ShopStrip kind={shop.kind} />
         <div className="mx-auto flex h-14 max-w-5xl items-center gap-2 px-5 sm:gap-3">
@@ -64,7 +65,7 @@ export async function ShopFrame({ params, children }: { params: Promise<{ shop: 
         </div>
       </header>
       {children}
-      <footer className="mt-20 flex flex-col items-center gap-3 border-t border-neutral-100 py-6 text-center text-xs text-neutral-400">
+      <footer className="mt-20 flex flex-col items-center gap-3 border-t border-neutral-200/70 py-6 text-center text-xs text-neutral-400">
         {/* Phones: the language picker sits here, the header has no room. */}
         <LanguageSwitcher className="sm:hidden" />
         {/* On the shop's own subdomain, /shops lives on the main site. */}

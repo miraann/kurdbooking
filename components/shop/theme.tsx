@@ -18,6 +18,15 @@ export function ShopStrip({ kind, className = "h-2.5" }: { kind?: ShopKind; clas
   );
 }
 
+/** zhewar's page background: neutral-50 with faint drifting red/blue stripes. */
+export function StripeBackground() {
+  return (
+    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 bg-neutral-50">
+      <div className="stripe-bg absolute inset-0" />
+    </div>
+  );
+}
+
 /** A logo (or the scissors / sparkle mark) inside the rotating two-colour ring. */
 export function LogoRing({
   logoUrl, kind, alt = "", className = "size-52 sm:size-64", iconClassName = "size-16", spin = true,

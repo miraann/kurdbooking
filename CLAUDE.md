@@ -76,14 +76,16 @@ The tokens and building blocks live in `app/globals.css` as Tailwind `@utility` 
 **The customer side** (`/shops`, the public shop page, booking, my bookings, receipt) follows zhewar's home page, in red and blue.
 Use the pieces in `components/shop/theme.tsx` (`ShopStrip`, `LogoRing`, `Divider`, `Heading`) and the `card-shop` / `input-shop` / `btn-shop` / `btn-shop-accent` utilities, never the indigo `card` / `input` / `btn-primary`:
 - white background with `neutral-900` headings
+- faint drifting red/blue diagonal stripes behind the page (`<StripeBackground>`)
 - the logo in a rotating two-colour ring
 - the accent → ✦ → primary divider
 - section headings with a small spaced Latin eyebrow (SERVICES, GALLERY …)
-- `rounded-3xl` image cards
+- `rounded-3xl` image cards; gallery and social posts use `<Carousel>` (swipe carousel on phones, 3-column grid on desktop)
+- the page ends with «تۆڕی کۆمەڵایەتی»: brand-coloured link cards, WhatsApp/phone, the red location card, then the book button
 
 Shop colours come from `--shop-primary` and `--shop-accent`, which default to zhewar's blue `#2563eb` and red `#ef4444`. Barbershops get the barber-pole strip; salons get a plain two-colour strip.
 
-Use `lucide-react` icons. Version 1.x has **no brand icons**: show social platforms as text pills.
+Use `lucide-react` icons. Version 1.x has **no brand icons**: for social platforms use `<BrandIcon>` and the `BRAND` colours in `components/shop/BrandIcon.tsx`.
 
 ## Languages: Kurdish Sorani (default), Arabic, English
 

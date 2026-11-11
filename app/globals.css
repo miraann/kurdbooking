@@ -191,3 +191,27 @@
   );
   background-size: 113px 100%;
 }
+
+/* zhewar's page background: faint red/blue diagonal stripes drifting slowly
+   (customer side only). Put it on a fixed layer behind the content. */
+.stripe-bg {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0px, transparent 24px,
+    var(--shop-accent) 24px, var(--shop-accent) 38px,
+    transparent 38px, transparent 62px,
+    var(--shop-primary) 62px, var(--shop-primary) 76px,
+    transparent 76px, transparent 100px
+  );
+  background-size: 141px 141px;
+  opacity: 0.045;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .stripe-bg {
+    animation: stripeScroll 22s linear infinite;
+  }
+}
+@keyframes stripeScroll {
+  from { background-position: 0 0; }
+  to { background-position: 141px 141px; }
+}

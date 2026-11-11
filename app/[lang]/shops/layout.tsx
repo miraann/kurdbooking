@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getI18n } from "@/lib/i18n/server";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
-import { ShopStrip } from "@/components/shop/theme";
+import { ShopStrip, StripeBackground } from "@/components/shop/theme";
 
 // Customer side of the platform: the list of shops (the customer app opens
 // here). zhewar's home-page look: white, barber-pole strip, red + blue.
@@ -9,7 +9,8 @@ import { ShopStrip } from "@/components/shop/theme";
 export default async function ShopsLayout({ children }: LayoutProps<"/[lang]/shops">) {
   const { t, href } = await getI18n();
   return (
-    <div className="flex min-h-dvh flex-col bg-white text-neutral-900">
+    <div className="relative isolate flex min-h-dvh flex-col text-neutral-900">
+      <StripeBackground />
       <header className="sticky top-0 z-50 border-b border-neutral-200 bg-white/90 shadow-sm backdrop-blur-md">
         <ShopStrip />
         <div className="mx-auto flex h-14 max-w-5xl items-center gap-2 px-5">

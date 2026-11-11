@@ -1,17 +1,22 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { CalendarPlus, Clock, ExternalLink, MapPin, MessageCircle, Phone, Search } from "lucide-react";
+import { CalendarPlus, ExternalLink, MapPin, Search, Share2 } from "lucide-react";
 import { getPublicShop, getShopContent, getShopReviews, isValidSlug } from "@/lib/shop-data";
 import { shopBasePath } from "@/lib/tenant";
 import { displayPhone, fill, whatsappLink } from "@/lib/format";
+import type { SocialPlatform } from "@/lib/types";
 import { getI18n } from "@/lib/i18n/server";
 import { SOCIAL_PLATFORM } from "@/lib/labels";
 import { Stars } from "@/components/ui/Stars";
 import { Divider, Heading, LogoRing } from "@/components/shop/theme";
+import { Carousel } from "@/components/shop/Carousel";
+import { BRAND, BrandIcon } from "@/components/shop/BrandIcon";
 
 // Public shop home, in the zhewar home-page style: centred hero with the logo
 // in a rotating two-colour ring, red→blue divider, blue "book" + red "my
 // bookings" buttons, then sections with small Latin eyebrows and big titles.
+// Gallery and social posts are zhewar's carousel (phones) / grid (desktop);
+// the page ends with zhewar's «تۆڕی کۆمەڵایەتی» cards and the book button.
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/s/[shop]">): Promise<Metadata> {
   const { shop: slug } = await params;
@@ -25,7 +30,8 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/s/[shop]">
   };
 }
 
-const WEEK = [6, 0, 1, 2, 3, 4, 5]; // Saturday first
+/** "https://www.instagram.com/x/" → "instagram.com/x" */
+const shortUrl = (url: string) => url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
 
 export default async function ShopHome({ params }: PageProps<"/[lang]/s/[shop]">) {
   const { shop: slug } = await params;
@@ -131,50 +137,55 @@ export default async function ShopHome({ params }: PageProps<"/[lang]/s/[shop]">
           </Section>
         )}
 
-        {/* ── Gallery ── */}
+        {/* ── Gallery (zhewar: carousel on phones, grid on desktop) ── */}
         {c.gallery.length > 0 && (
           <Section eyebrow="GALLERY" title={s.gallery}>
-            <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
+            <Carousel>
               {c.gallery.map((g) => (
-                <li key={g.id} className="group relative overflow-hidden rounded-3xl border border-neutral-100 shadow-md transition-shadow duration-300 hover:shadow-xl">
+                <div key={g.id} className="group relative aspect-[3/4] overflow-hidden rounded-3xl border border-neutral-100 shadow-md transition-shadow duration-300 hover:shadow-xl">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={g.image_url} alt={g.caption ?? ""} loading="lazy" className="aspect-[4/5] w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                  {g.caption && (
-                    <>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                      <div className="absolute inset-x-4 bottom-4 text-start">
-                        <p className="text-sm font-medium text-white">{g.caption}</p>
-                        <div className="me-auto mt-1.5 h-px w-8" style={{ background: "var(--shop-primary)" }} />
-                      </div>
-                    </>
-                  )}
-                </li>
+                  <img src={g.image_url} alt={g.caption ?? ""} loading="lazy" className="size-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                  {g.caption && <CardCaption text={g.caption} />}
+                </div>
               ))}
-            </ul>
+            </Carousel>
           </Section>
         )}
 
-        {/* ── Social posts ── */}
+        {/* ── Social media posts (same carousel) ── */}
         {c.posts.length > 0 && (
           <Section eyebrow="POSTS" title={s.posts}>
-            <ul className="-mx-5 flex snap-x gap-3 overflow-x-auto px-5 pb-2 scrollbar-hide">
+            <Carousel>
               {c.posts.map((post) => (
-                <li key={post.id} className="w-64 shrink-0 snap-start">
-                  <a href={post.url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-3xl border border-neutral-100 bg-white shadow-md">
-                    {post.image_url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={post.image_url} alt="" loading="lazy" className="aspect-square w-full object-cover" />
-                    )}
-                    <div className="space-y-1 p-4">
-                      <p className="flex items-center gap-1 text-xs text-neutral-400">
-                        {SOCIAL_PLATFORM[post.platform][lang]} <ExternalLink className="size-3" aria-hidden />
-                      </p>
-                      {post.caption && <p className="line-clamp-3 text-sm">{post.caption}</p>}
-                    </div>
-                  </a>
-                </li>
+                <a
+                  key={post.id}
+                  href={post.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group relative block aspect-[3/4] touch-manipulation overflow-hidden rounded-3xl border border-neutral-100 bg-neutral-100 shadow-md transition-shadow duration-300 hover:shadow-xl"
+                >
+                  {post.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={post.image_url} alt="" loading="lazy" className="size-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  ) : (
+                    <div className="grid size-full place-items-center"><Share2 className="size-14 text-neutral-300" aria-hidden /></div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                  <span
+                    className="absolute start-4 top-4 flex items-center gap-1.5 rounded-full py-1 pe-3 ps-1 text-xs font-bold shadow-md"
+                    style={{ background: "rgb(255 255 255 / 0.92)", color: "#171717" }}
+                  >
+                    <span className="grid size-6 place-items-center rounded-full" style={{ background: BRAND[post.platform].bg, color: BRAND[post.platform].fg }}>
+                      <BrandIcon platform={post.platform} className="size-3.5" />
+                    </span>
+                    {SOCIAL_PLATFORM[post.platform][lang]}
+                    <ExternalLink className="size-3 text-neutral-400" aria-hidden />
+                  </span>
+                  {post.caption && <CardCaption text={post.caption} />}
+                </a>
               ))}
-            </ul>
+            </Carousel>
           </Section>
         )}
 
@@ -219,87 +230,97 @@ export default async function ShopHome({ params }: PageProps<"/[lang]/s/[shop]">
           </Section>
         )}
 
-        {/* ── Hours + contact ── */}
-        <Section eyebrow="CONTACT" title={s.contact}>
-          <div className="grid gap-4 md:grid-cols-2">
-            {c.hours.length > 0 && (
-              <div className="rounded-3xl border border-neutral-100 bg-white p-2 shadow-md-1">
-                <p className="flex items-center gap-2 px-4 pb-1 pt-3 font-bold"><Clock className="size-4" aria-hidden /> {s.hours}</p>
-                <ul className="divide-y divide-neutral-100">
-                  {WEEK.map((d) => {
-                    const h = c.hours.find((x) => x.day_of_week === d);
-                    return (
-                      <li key={d} className="flex justify-between px-4 py-2.5 text-sm">
-                        <span>{f.day(d)}</span>
-                        <span className="text-neutral-500">
-                          {h?.is_open ? `${f.time(h.open_time)} – ${f.time(h.close_time)}` : s.closedDay}
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
-
-            <div className="space-y-3 card-shop">
+        {/* ── Social networks (zhewar: brand cards, location card, book button) ── */}
+        {(c.links.length > 0 || p?.whatsapp || p?.phone || c.locations.length > 0 || p?.booking_enabled) && (
+          <Section eyebrow="SOCIAL" title={s.socials}>
+            <div className="mx-auto w-full max-w-sm space-y-3">
+              {c.links.map((l) => (
+                <BrandCard
+                  key={l.id}
+                  platform={l.platform}
+                  href={l.url}
+                  label={l.title || SOCIAL_PLATFORM[l.platform][lang]}
+                  sub={shortUrl(l.url)}
+                />
+              ))}
+              {p?.whatsapp && !c.links.some((l) => l.platform === "whatsapp") && (
+                <BrandCard platform="whatsapp" href={whatsappLink(p.whatsapp)} label={t.common.whatsapp} sub={displayPhone(p.whatsapp)} />
+              )}
               {p?.phone && (
-                <a href={`tel:${displayPhone(p.phone)}`} className="btn-ghost w-full justify-between" dir="ltr">
-                  {displayPhone(p.phone)} <Phone className="size-4" aria-hidden />
-                </a>
+                <BrandCard platform="phone" href={`tel:${displayPhone(p.phone)}`} label={s.phone} sub={displayPhone(p.phone)} />
               )}
-              {p?.whatsapp && (
-                <a href={whatsappLink(p.whatsapp)} target="_blank" rel="noreferrer" className="btn w-full bg-[#25d366] text-white">
-                  <MessageCircle className="size-5" aria-hidden /> {t.common.whatsapp}
-                </a>
-              )}
-              {c.links.length > 0 && (
-                <ul className="flex flex-wrap gap-2 pt-1">
-                  {c.links.map((l) => (
-                    <li key={l.id}>
-                      <a href={l.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50">
-                        {l.title || SOCIAL_PLATFORM[l.platform][lang]}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
+
+              {/* Location: the big red card */}
+              {c.locations.map((loc) => {
+                const map = loc.maps_url ?? (loc.lat != null && loc.lng != null ? `https://www.google.com/maps?q=${loc.lat},${loc.lng}` : null);
+                const where = [loc.address, loc.city].filter(Boolean).join(lang === "en" ? ", " : "، ");
+                const body = (
+                  <>
+                    <div className="grid size-20 place-items-center rounded-2xl" style={{ background: "var(--shop-accent)" }}>
+                      <MapPin className="size-10 text-white" aria-hidden />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xl font-bold text-neutral-900">{c.locations.length > 1 ? loc.name : s.ourLocation}</p>
+                      {where && <p className="mt-1 text-sm text-neutral-500">{where}</p>}
+                      {map && <p className="mt-1 text-xs text-neutral-400">{s.mapHint}</p>}
+                    </div>
+                  </>
+                );
+                const cls = "flex w-full flex-col items-center gap-3 rounded-2xl border bg-white p-6 transition-all duration-200";
+                const style = { borderColor: "color-mix(in srgb, var(--shop-accent) 30%, white)", boxShadow: "0 4px 20px rgba(239,68,68,0.15)" };
+                return map ? (
+                  <a key={loc.id} href={map} target="_blank" rel="noreferrer" className={`${cls} touch-manipulation active:scale-[0.98]`} style={style}>{body}</a>
+                ) : (
+                  <div key={loc.id} className={cls} style={style}>{body}</div>
+                );
+              })}
+
+              {p?.booking_enabled && (
+                <div className="pt-4">
+                  <div className="mb-4 h-px bg-gradient-to-r from-transparent via-neutral-200 to-transparent" />
+                  <Link href={href(`${base}/book`)} className="btn-shop w-full py-5">
+                    <CalendarPlus className="size-5" aria-hidden /> {s.bookNow}
+                  </Link>
+                </div>
               )}
             </div>
-          </div>
-        </Section>
-
-        {/* ── Locations ── */}
-        {c.locations.length > 0 && (
-          <Section eyebrow="LOCATION" title={s.location}>
-            <ul className="grid gap-4 md:grid-cols-2">
-              {c.locations.map((loc) => (
-                <li key={loc.id} className="space-y-3 card-shop">
-                  <p className="font-bold">{loc.name}</p>
-                  {(loc.address || loc.city) && <p className="text-sm text-neutral-500">{[loc.address, loc.city].filter(Boolean).join(lang === "en" ? ", " : "، ")}</p>}
-                  {loc.lat != null && loc.lng != null && (
-                    <iframe
-                      title={loc.name}
-                      src={`https://maps.google.com/maps?q=${loc.lat},${loc.lng}&z=16&output=embed`}
-                      className="h-52 w-full rounded-2xl border-0"
-                      loading="lazy"
-                    />
-                  )}
-                  {(loc.maps_url || (loc.lat != null && loc.lng != null)) && (
-                    <a
-                      href={loc.maps_url ?? `https://www.google.com/maps?q=${loc.lat},${loc.lng}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="btn-ghost w-full"
-                    >
-                      <MapPin className="size-4" aria-hidden /> {s.openMap}
-                    </a>
-                  )}
-                </li>
-              ))}
-            </ul>
           </Section>
         )}
       </div>
     </main>
+  );
+}
+
+/** zhewar card caption: white text over the dark fade, short blue line under it. */
+function CardCaption({ text }: { text: string }) {
+  return (
+    <div className="absolute inset-x-4 bottom-4 text-start">
+      <p className="text-sm font-medium text-white">{text}</p>
+      <div className="me-auto mt-1.5 h-px w-8" style={{ background: "var(--shop-primary)" }} />
+    </div>
+  );
+}
+
+/** zhewar social card: brand-coloured icon box, name, short link. */
+function BrandCard({ platform, href, label, sub }: { platform: SocialPlatform | "phone"; href: string; label: string; sub: string }) {
+  const b = BRAND[platform];
+  const external = !href.startsWith("tel:");
+  return (
+    <a
+      href={href}
+      {...(external ? { target: "_blank", rel: "noreferrer" } : {})}
+      className="flex touch-manipulation items-center gap-4 rounded-2xl border bg-white p-4 transition-all duration-200 active:scale-[0.98]"
+      style={{ borderColor: b.border, boxShadow: b.shadow }}
+    >
+      <span className="grid size-12 shrink-0 place-items-center rounded-xl" style={{ background: b.bg, color: b.fg }}>
+        <BrandIcon platform={platform} />
+      </span>
+      <span className="min-w-0 flex-1 text-start">
+        <span className="block text-base font-bold text-neutral-900">{label}</span>
+        <span className="mt-0.5 block truncate text-xs text-neutral-400"><bdi dir="ltr">{sub}</bdi></span>
+      </span>
+      {external && <ExternalLink className="size-4 shrink-0 text-neutral-300" aria-hidden />}
+    </a>
   );
 }
 
