@@ -5,7 +5,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 //
 // The live site. To point the app elsewhere, set KB_APP_URL before `npx cap sync`:
 //   PowerShell:  $env:KB_APP_URL = "https://kurdbooking.com"; npx cap sync
-const APP_URL = (process.env.KB_APP_URL || "https://kurdbooking.vercel.app").replace(/\/$/, "");
+const APP_URL = (process.env.KB_APP_URL || "https://kurdbooking-dlpz.vercel.app").replace(/\/$/, "");
 const host = new URL(APP_URL).host;
 
 const config: CapacitorConfig = {

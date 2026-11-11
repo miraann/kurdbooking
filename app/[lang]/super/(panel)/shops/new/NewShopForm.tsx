@@ -3,12 +3,13 @@
 import { useActionState, useRef, useState } from "react";
 import { initialActionState } from "@/lib/fields";
 import { SHOP_KIND } from "@/lib/labels";
+import { siteUrl } from "@/lib/env";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { createShop } from "@/app/[lang]/super/actions";
 
 const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "";
-const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/^https?:\/\//, "");
+const SITE = siteUrl().replace(/^https?:\/\//, "");
 
 /** Easy to read out over the phone: no 0/O or 1/l/I. */
 function randomPassword(): string {
