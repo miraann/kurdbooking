@@ -15,7 +15,15 @@ export type Field =
   | (Base & { type: "text" | "textarea" | "url" | "tel" | "email"; required?: boolean; placeholder?: Txt; maxLength?: number })
   | (Base & { type: "number"; required?: boolean; min?: number; max?: number; step?: number | "any"; placeholder?: Txt; /** saved when left empty (for NOT NULL columns) */ emptyValue?: number })
   | (Base & { type: "checkbox"; defaultChecked?: boolean })
-  | (Base & { type: "select"; options: { value: string; label: Txt }[]; required?: boolean })
+  | (Base & {
+      type: "select";
+      options: { value: string; label: Txt }[];
+      required?: boolean;
+      /** Label of the empty choice when not required (default "—"). */
+      emptyLabel?: Txt;
+      /** Options read from the shop's data on the server (lib/resources.server.ts → withShopOptions). */
+      optionsFrom?: "staff";
+    })
   | (Base & { type: "date"; required?: boolean })
   | (Base & { type: "time"; required?: boolean })
   | (Base & { type: "color" })

@@ -9,6 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { echoValues, FieldError, parseFields, removeImages } from "@/lib/fields.server";
 import type { ActionState } from "@/lib/fields";
 import { isResourceKey, RESOURCES, type ResourceKey } from "@/lib/resources";
+import { withShopOptions } from "@/lib/resources.server";
 import { BOOKING_FIELDS, PROFILE_FIELDS } from "@/lib/forms";
 import { shopSlugTag, shopTag } from "@/lib/shop-data";
 import { userMessage } from "@/lib/errors";
@@ -39,7 +40,10 @@ export async function saveResource(key: ResourceKey, _prev: ActionState, formDat
   const id = String(formData.get("id") ?? "") || null;
 
   try {
-    const row = await parseFields(cfg.fields, formData, { lang, supabase, shopId: shop.id, isNew: !id });
+    const fields = await withShopOptions(cfg.fields, supabase, shop.id); // e.g. only this shop's staff
+    const row = await parseFields(fields, formData, { lang, supabase, shopId: shop.id, isNew: !id });
+    const problem = cfg.check?.(row);
+    if (problem) throw new FieldError(t.errors[problem]);
 
     if (id) {
       let oldImage: string | null = null;

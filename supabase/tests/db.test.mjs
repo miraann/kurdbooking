@@ -44,7 +44,8 @@ await db.exec(`
   grant all on storage.objects to authenticated;
 `);
 
-for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql']) {
+// 0006 (pg_cron schedule) needs the cron extension, which PGlite doesn't have.
+for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql']) {
   try { await db.exec(readFileSync(new URL(f, MIG), 'utf8')); console.log('applied', f); }
   catch (e) { console.log('MIGRATION FAILED', f, e.message, e.position ?? ''); process.exit(1); }
 }
@@ -131,6 +132,27 @@ await db.query(`update public.appointments set service_id=$1 where shop_id=$2`, 
 await db.query(`delete from public.services where id=$1`, [svc]);
 const kept = await db.query(`select count(*)::int c from public.appointments where shop_id=$1 and service_id is null`, [shopA]);
 ok('deleting a service keeps its bookings', kept.rows[0].c === 3);
+
+// ── Closed days and hours (blocked_dates) ──────────────────────────────────
+const block = (start, end, staff = null, date = '2030-03-01') => db.query(
+  `insert into public.blocked_dates (shop_id, staff_id, date, start_time, end_time) values ($1,$2,$3,$4,$5)`,
+  [shopA, staff, date, start, end]);
+await block(null, null);
+ok('whole-day block saved', true);
+await expectError('second whole-day block for the same day rejected', `insert into public.blocked_dates (shop_id, date) values ($1,'2030-03-01')`, [shopA], '23505');
+await block('15:00', '16:00');
+await block('18:00', '18:30');
+ok('several closed ranges on one day allowed', true);
+await block('15:00', '16:00', staffA);
+ok('one staff member can be closed for a range', true);
+await expectError('range ending before it starts rejected', `insert into public.blocked_dates (shop_id, date, start_time, end_time) values ($1,'2030-03-02','16:00','15:00')`, [shopA], '23514');
+await expectError('start without end rejected', `insert into public.blocked_dates (shop_id, date, start_time) values ($1,'2030-03-02','16:00')`, [shopA], '23514');
+await expectError("closing another shop's staff rejected", `insert into public.blocked_dates (shop_id, staff_id, date) values ($1,$2,'2030-03-02')`, [shopA, staffB], '23503');
+await as('authenticated', users.ali);
+await db.query(`insert into public.blocked_dates (shop_id, date, start_time, end_time) values ($1,'2030-03-03','12:00','13:00')`, [shopA]);
+ok('ali closes an hour in his shop', true);
+await expectError("ali cannot close hours in Sara's shop", `insert into public.blocked_dates (shop_id, date, start_time, end_time) values ($1,'2030-03-03','12:00','13:00')`, [shopB], 'row-level security');
+await as(null);
 
 // ── Super admin, payments, status job ──────────────────────────────────────
 await db.query(`update public.profiles set is_super_admin=true where id=$1`, [users.miran]);

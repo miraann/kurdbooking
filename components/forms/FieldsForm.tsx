@@ -86,7 +86,7 @@ function FieldInput({ field: f, lang, value, echoed }: { field: Field; lang: Lan
         <textarea id={id} name={f.name} defaultValue={str} rows={3} maxLength={f.maxLength} placeholder={placeholder} className="input" />
       ) : f.type === "select" ? (
         <select id={id} name={f.name} defaultValue={str} className="input">
-          {!f.required && <option value="">—</option>}
+          {!f.required && <option value="">{f.emptyLabel ? tx(f.emptyLabel, lang) : "—"}</option>}
           {f.options.map((o) => (
             <option key={o.value} value={o.value}>{tx(o.label, lang)}</option>
           ))}

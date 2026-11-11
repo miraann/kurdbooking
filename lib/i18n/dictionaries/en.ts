@@ -31,6 +31,7 @@ const en: Dict = {
     copyLink: "Copy link",
     copied: "Copied ✓",
     unknown: "Unknown",
+    wholeDay: "Whole day",
   },
 
   errors: {
@@ -58,6 +59,7 @@ const en: Dict = {
     ownerRename: "Only the shop owner can change its name",
     hours: "Opening and closing times aren't valid",
     breakHours: "The break must be inside working hours",
+    blockTimes: "Fill in «From» and «To» together, and «To» must be after «From». Leave both empty to close the whole day.",
   },
 
   notFound: {
@@ -199,8 +201,8 @@ const en: Dict = {
     schedule: {
       title: "Working hours and days off",
       help: "Customers can only book within these hours.",
-      daysOff: "Days off",
-      daysOffHelp: "Holidays, travel or any day the shop is closed.",
+      daysOff: "Closed days and hours",
+      daysOffHelp: "A holiday or trip (the whole day), or just a few hours (e.g. 3:00 to 4:00 for a tea break or family errand). For the whole shop or one staff member.",
     },
     services: { title: "Services", help: "The services a customer chooses from when booking." },
     staff: { title: "Staff", help: "Each staff member has their own schedule; two people can work at the same time." },

@@ -16,6 +16,12 @@ export interface Busy {
   ends_at: string;
 }
 
+/** A range of the day closed by hand (blocked_dates with start/end), shop-local "HH:MM". */
+export interface ClosedRange {
+  start: string;
+  end: string;
+}
+
 const toMinutes = (t: string) => {
   const [h, m] = t.split(":").map(Number);
   return h * 60 + m;
@@ -66,7 +72,8 @@ export interface SlotInput {
   dateKey: string;
   timeZone: string;
   hours: DayHours | null; // staff override if any, else the shop's hours
-  isBlocked: boolean;
+  isBlocked: boolean; // the whole day is closed
+  closed?: ClosedRange[]; // parts of the day closed by hand
   durationMinutes: number;
   intervalMinutes: number;
   minNoticeMinutes: number;
@@ -88,6 +95,7 @@ export function computeSlots(input: SlotInput): string[] {
   const close = toMinutes(hours.close_time);
   const breakStart = hours.break_start ? toMinutes(hours.break_start) : null;
   const breakEnd = hours.break_end ? toMinutes(hours.break_end) : null;
+  const closed = (input.closed ?? []).map((c) => [toMinutes(c.start), toMinutes(c.end)] as const);
   const earliest = now.getTime() + input.minNoticeMinutes * 60000;
   const busy = input.busy.map((b) => [Date.parse(b.starts_at), Date.parse(b.ends_at)] as const);
 
@@ -95,6 +103,7 @@ export function computeSlots(input: SlotInput): string[] {
   for (let t = open; t + durationMinutes <= close; t += Math.max(5, intervalMinutes)) {
     const end = t + durationMinutes;
     if (breakStart != null && breakEnd != null && t < breakEnd && end > breakStart) continue;
+    if (closed.some(([cs, ce]) => t < ce && end > cs)) continue;
 
     const start = zonedToUtc(dateKey, toHHMM(t), timeZone).getTime();
     if (start < earliest) continue;

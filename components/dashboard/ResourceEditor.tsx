@@ -1,6 +1,7 @@
 import { canManage, requireShop } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { RESOURCES, type ResourceKey } from "@/lib/resources";
+import { RESOURCES, type ResourceConfig, type ResourceKey } from "@/lib/resources";
+import { withShopOptions } from "@/lib/resources.server";
 import type { Field, FieldValues } from "@/lib/fields";
 import { tx } from "@/lib/i18n/config";
 import { getI18n, type I18n } from "@/lib/i18n/server";
@@ -14,11 +15,13 @@ export async function ResourceEditor({ resource }: { resource: ResourceKey }) {
   const [{ shop, role }, i18n] = await Promise.all([requireShop(), getI18n()]);
   const { lang, t } = i18n;
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from(cfg.table)
     .select("*")
     .eq("shop_id", shop.id)
     .order(cfg.orderBy.column, { ascending: cfg.orderBy.ascending });
+  if (cfg.thenBy) query = query.order(cfg.thenBy, { ascending: cfg.orderBy.ascending, nullsFirst: true });
+  const [{ data, error }, fields] = await Promise.all([query, withShopOptions(cfg.fields, supabase, shop.id)]);
   if (error) throw error;
   const rows = (data ?? []) as (FieldValues & { id: string })[];
   const editable = canManage(role);
@@ -30,7 +33,7 @@ export async function ResourceEditor({ resource }: { resource: ResourceKey }) {
         <details className="card group">
           <summary className="cursor-pointer list-none font-semibold text-brand">＋ {cfg.addLabel[lang]}</summary>
           <div className="mt-4">
-            <FieldsForm action={save} fields={cfg.fields} submitLabel={t.common.add} />
+            <FieldsForm action={save} fields={fields} submitLabel={t.common.add} />
           </div>
         </details>
       )}
@@ -41,9 +44,11 @@ export async function ResourceEditor({ resource }: { resource: ResourceKey }) {
         <ul className="space-y-3">
           {rows.map((row) => {
             const image = cfg.imageField ? (row[cfg.imageField] as string | null) : null;
-            const title = cell(cfg.fields, cfg.titleField, row[cfg.titleField], i18n) || "—";
-            const subtitle = (cfg.subtitleFields ?? [])
-              .map((name) => cell(cfg.fields, name, row[name], i18n))
+            const title = cell(fields, cfg.titleField, row[cfg.titleField], i18n) || "—";
+            const subtitle = [
+              range(cfg, row, i18n),
+              ...(cfg.subtitleFields ?? []).map((name) => cell(fields, name, row[name], i18n)),
+            ]
               .filter(Boolean)
               .join(" · ");
             const inactive = row.is_active === false;
@@ -73,7 +78,7 @@ export async function ResourceEditor({ resource }: { resource: ResourceKey }) {
                   <details className="mt-3 border-t border-slate-100 pt-3">
                     <summary className="cursor-pointer text-sm text-brand">{t.common.edit}</summary>
                     <div className="mt-4">
-                      <FieldsForm action={save} fields={cfg.fields} defaults={row} hidden={{ id: row.id }} submitLabel={t.common.save} />
+                      <FieldsForm action={save} fields={fields} defaults={row} hidden={{ id: row.id }} submitLabel={t.common.save} />
                     </div>
                   </details>
                 )}
@@ -86,6 +91,13 @@ export async function ResourceEditor({ resource }: { resource: ResourceKey }) {
   );
 }
 
+/** "٣:٠٠ – ٤:٠٠ دوا نیوەڕۆ" for rangeFields, or "whole day" when both are empty. */
+function range(cfg: ResourceConfig, row: FieldValues, { t, f }: I18n): string {
+  if (!cfg.rangeFields) return "";
+  const [from, to] = cfg.rangeFields.map((name) => row[name]);
+  return from && to ? `${f.time(String(from))} – ${f.time(String(to))}` : t.common.wholeDay;
+}
+
 /** Human-friendly value for the list view. */
 function cell(fields: Field[], name: string, value: FieldValues[string], { lang, f }: I18n): string {
   if (value == null || value === "") return "";
@@ -95,6 +107,7 @@ function cell(fields: Field[], name: string, value: FieldValues[string], { lang,
     return option ? tx(option.label, lang) : String(value);
   }
   if (field?.type === "date") return f.date(String(value));
+  if (field?.type === "time") return f.time(String(value));
   if (name === "price_iqd") return f.iqd(Number(value));
   if (name === "duration_minutes") return f.minutes(Number(value));
   return String(value);

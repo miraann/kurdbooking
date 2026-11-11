@@ -5,6 +5,7 @@
 
 import type { Field } from "@/lib/fields";
 import type { T3 } from "@/lib/i18n/config";
+import type { Dict } from "@/lib/i18n/dictionaries";
 import { SOCIAL_PLATFORM } from "@/lib/labels";
 
 export type ResourceKey =
@@ -27,6 +28,12 @@ export interface ResourceConfig {
   subtitleFields?: string[];
   imageField?: string;
   orderBy: { column: string; ascending: boolean };
+  /** Second sort column (same direction), for rows that tie on orderBy. */
+  thenBy?: string;
+  /** Two time columns shown as "from – to" in the list (or "whole day" when both are empty). */
+  rangeFields?: [start: string, end: string];
+  /** Checks across fields after parseFields(); returns an errors.* key to reject the row. */
+  check?: (row: Record<string, unknown>) => keyof Dict["errors"] | null;
   /** Plan column that caps how many rows a shop may have. */
   limit?: "max_staff" | "max_gallery_photos" | "max_locations";
 }
@@ -165,16 +172,34 @@ export const RESOURCES: Record<ResourceKey, ResourceConfig> = {
     ],
   },
 
+  // A whole day off, or (with from/to) a closed part of a day. Empty staff = the whole shop.
   blocked_dates: {
     table: "blocked_dates",
-    addLabel: { ckb: "ڕۆژی پشوو", ar: "يوم عطلة", en: "Day off" },
-    emptyText: { ckb: "هیچ ڕۆژێکی پشوو دیاری نەکراوە", ar: "لم يتم تحديد أي يوم عطلة", en: "No days off set" },
+    addLabel: { ckb: "داخستنی ڕۆژ یان کات", ar: "إغلاق يوم أو وقت", en: "Close a day or hours" },
+    emptyText: { ckb: "هیچ ڕۆژ یان کاتێک دانەخراوە", ar: "لم يتم إغلاق أي يوم أو وقت", en: "Nothing closed" },
     titleField: "date",
-    subtitleFields: ["reason"],
+    subtitleFields: ["staff_id", "reason"],
+    rangeFields: ["start_time", "end_time"],
     orderBy: { column: "date", ascending: true },
+    thenBy: "start_time",
+    check: (row) => {
+      const from = row.start_time as string | null;
+      const to = row.end_time as string | null;
+      if (!from && !to) return null; // whole day
+      return from && to && to > from ? null : "blockTimes";
+    },
     fields: [
       { name: "date", label: L.date, type: "date", required: true },
-      { name: "reason", label: { ckb: "هۆکار", ar: "السبب", en: "Reason" }, type: "text", maxLength: 120, placeholder: { ckb: "بۆ نموونە: جەژن", ar: "مثلاً: العيد", en: "e.g. Eid" } },
+      {
+        name: "start_time", label: { ckb: "لە کاتژمێر", ar: "من الساعة", en: "From" }, type: "time",
+        help: { ckb: "بەتاڵ = هەموو ڕۆژەکە", ar: "فارغ = اليوم كله", en: "Empty = the whole day" },
+      },
+      { name: "end_time", label: { ckb: "تا کاتژمێر", ar: "إلى الساعة", en: "To" }, type: "time" },
+      {
+        name: "staff_id", label: { ckb: "بۆ کێ", ar: "لمن", en: "For whom" }, type: "select", options: [], optionsFrom: "staff",
+        emptyLabel: { ckb: "هەموو دوکانەکە", ar: "المحل كله", en: "The whole shop" },
+      },
+      { name: "reason", label: { ckb: "هۆکار", ar: "السبب", en: "Reason" }, type: "text", maxLength: 120, placeholder: { ckb: "بۆ نموونە: جەژن، پشووی چا", ar: "مثلاً: العيد، استراحة", en: "e.g. Eid, tea break" } },
     ],
   },
 

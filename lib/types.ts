@@ -122,6 +122,9 @@ export interface BlockedDate {
   shop_id: string;
   staff_id: string | null;
   date: string; // "YYYY-MM-DD"
+  /** Both null = the whole day; both set = only this shop-local range ("HH:MM:SS"). */
+  start_time: string | null;
+  end_time: string | null;
   reason: string | null;
 }
 

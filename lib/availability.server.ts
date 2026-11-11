@@ -1,6 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { addDays, computeSlots, dayOfWeek, isDateKey, zonedToUtc, type DayHours } from "@/lib/booking";
+import { addDays, computeSlots, dayOfWeek, isDateKey, zonedToUtc, type ClosedRange, type DayHours } from "@/lib/booking";
 import type { BlockedDate, Service, ShopProfile, Staff, WorkingHours } from "@/lib/types";
 
 // Free times per staff member for one service on one day. Reads existing
@@ -59,7 +59,14 @@ export async function getAvailability(input: AvailabilityInput): Promise<Map<str
   const blocked = (blockedRes.data ?? []) as BlockedDate[];
   const busy = (busyRes.data ?? []) as { staff_id: string; starts_at: string; ends_at: string }[];
   const shopHours = hours.find((h) => h.staff_id === null) ?? null;
-  const shopClosed = blocked.some((b) => b.staff_id === null);
+  // Rows without times close the whole day; rows with times close a range.
+  const wholeDay = (staffId: string | null) => blocked.some((b) => b.staff_id === staffId && !b.start_time);
+  const ranges = (staffId: string | null): ClosedRange[] =>
+    blocked
+      .filter((b) => b.staff_id === staffId && b.start_time && b.end_time)
+      .map((b) => ({ start: b.start_time!.slice(0, 5), end: b.end_time!.slice(0, 5) }));
+  const shopClosed = wholeDay(null);
+  const shopRanges = ranges(null);
 
   for (const id of staffIds) {
     const own = hours.find((h) => h.staff_id === id);
@@ -69,7 +76,8 @@ export async function getAvailability(input: AvailabilityInput): Promise<Map<str
         dateKey: input.dateKey,
         timeZone: input.timeZone,
         hours: (own ?? shopHours) as DayHours | null,
-        isBlocked: shopClosed || blocked.some((b) => b.staff_id === id),
+        isBlocked: shopClosed || wholeDay(id),
+        closed: [...shopRanges, ...ranges(id)],
         durationMinutes: input.service.duration_minutes,
         intervalMinutes: input.profile.slot_interval_minutes,
         minNoticeMinutes: input.profile.min_notice_minutes,
