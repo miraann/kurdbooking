@@ -10,6 +10,8 @@ Every page lives under `app/[lang]/` (see **Languages** below), so the folders a
 
 - **Side 1, seller platform:** landing, `/pricing` and `/signup` in `app/[lang]/(platform)`. The owner of the platform uses `/super` (`app/[lang]/super`).
   - `/signup` is only an order form: it saves a row in `shop_requests`, no account and no shop. **Only the super admin creates shops**, in `/super/shops/new` (or from an order in `/super/requests`).
+  - **Two separate logins:** `/login` is for shop owners and staff, `/super/login` is for the super admin. Each refuses the other kind of account (`signIn()` in `app/[lang]/(platform)/auth-actions.ts`). `/super` pages live in `app/[lang]/super/(panel)/` so that `/super/login` is outside the admin check.
+  - New orders send a browser push to the super admin (`lib/push.ts`, `public/sw.js`).
 - **Side 2, each shop:**
   - The owner dashboard is `/dashboard` (`app/[lang]/dashboard`). The Android, iOS and Windows apps open this page.
   - The public shop page is `/s/<slug>` (`app/[lang]/s/[shop]`). Once a domain is set it is also `<slug>.<root-domain>`, through `proxy.ts`.

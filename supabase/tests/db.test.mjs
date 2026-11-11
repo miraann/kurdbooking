@@ -45,7 +45,7 @@ await db.exec(`
 `);
 
 // 0006 (pg_cron schedule) needs the cron extension, which PGlite doesn't have.
-for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql', '0009_shop_requests.sql']) {
+for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql', '0009_shop_requests.sql', '0010_web_push.sql']) {
   try { await db.exec(readFileSync(new URL(f, MIG), 'utf8')); console.log('applied', f); }
   catch (e) { console.log('MIGRATION FAILED', f, e.message, e.position ?? ''); process.exit(1); }
 }
@@ -308,6 +308,26 @@ ok('super reads orders', (await db.query(`select * from public.shop_requests`)).
 ok('super marks an order done', (await db.query(`update public.shop_requests set status='done', shop_id=$2 where id=$1`, [order, shopA])).affectedRows === 1);
 ok('super deletes an order', (await db.query(`delete from public.shop_requests where id=$1`, [order])).affectedRows === 1);
 await as(null);
+
+// ── Web Push ───────────────────────────────────────────────────────────────
+const sub = (uid, n) => db.query(`insert into public.push_subscriptions (user_id, endpoint, p256dh, auth) values ($1,$2,'k','a')`, [uid, `https://push.example/${n}`]);
+await as('authenticated', users.ali);
+await sub(users.ali, 'ali');
+ok('user saves own push subscription', true);
+await expectError("user cannot save a subscription for someone else", `insert into public.push_subscriptions (user_id, endpoint, p256dh, auth) values ($1,'https://push.example/x','k','a')`, [users.sara], 'row-level security');
+await expectError('subscription endpoint must be https', `insert into public.push_subscriptions (user_id, endpoint, p256dh, auth) values ($1,'http://push.example/y','k','a')`, [users.ali], 'check');
+await as('authenticated', users.sara);
+ok("sara reads none of Ali's subscriptions", (await db.query(`select * from public.push_subscriptions`)).rows.length === 0);
+ok("sara cannot delete Ali's subscription", (await db.query(`delete from public.push_subscriptions`)).affectedRows === 0);
+await expectError('owner cannot read the push keys', `select * from public.push_keys`, [], 'permission denied');
+await as('authenticated', users.miran);
+await expectError('super cannot read the push keys either', `select * from public.push_keys`, [], 'permission denied');
+await as('anon');
+await expectError('anon cannot read subscriptions', `select * from public.push_subscriptions`, [], 'permission denied');
+await expectError('anon cannot read the push keys', `select * from public.push_keys`, [], 'permission denied');
+await as(null);
+await db.query(`insert into public.push_keys (public_key, private_key) values ('pub','priv')`);
+await expectError('only one push key pair', `insert into public.push_keys (public_key, private_key) values ('pub2','priv2')`, [], 'duplicate key');
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -37,7 +37,8 @@ Status as of 2026-11-11: phases 1–4 are built. Everything below is checked by 
 - [x] Capacitor Android + iOS projects generated, Tauri Windows project with icons
 - [ ] Set the live URL and build: Android (Android Studio), iOS (Mac or cloud), Windows (Rust)
 - [ ] Push to owners on new bookings: FCM; port zhewar `lib/pushNotifications.ts`, save to `device_tokens`
-- [ ] Windows notifications (tauri-plugin-notification) or web push in the browser
+- [x] Browser push (Web Push, `lib/push.ts`, `public/sw.js`, tables `push_subscriptions` / `push_keys`): the super admin gets an alert for each new `/signup` order
+- [ ] Windows notifications (tauri-plugin-notification), or reuse the browser push above for owners
 - [ ] Notification sound choice (zhewar `notification_sound`)
 - [ ] Final app icon and splash
 

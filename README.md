@@ -46,8 +46,10 @@ npm run dev
 |---|---|
 | http://localhost:3000 | Platform landing |
 | http://localhost:3000/signup | Order form: saves a request only. Shops are created by the super admin in `/super/shops/new` (or from `/super/requests`) |
+| http://localhost:3000/login | Shop login (owners and staff only) |
 | http://localhost:3000/dashboard | Owner dashboard |
 | http://localhost:3000/s/&lt;slug&gt; | The shop's public page |
+| http://localhost:3000/super/login | Super admin login (super admin accounts only) |
 | http://localhost:3000/super | Your super admin |
 
 ### Make yourself super admin
@@ -60,8 +62,9 @@ update public.profiles set is_super_admin = true
 where id = (select id from auth.users where email = 'YOUR-EMAIL');
 ```
 
-3. Log in at `/login`. It takes you to `/super`.
-4. Create your plans in **پلانەکان**, and set the trial days, grace days and your WhatsApp number in **ڕێکخستن**.
+3. Log in at `/super/login` (the shop login at `/login` refuses super admin accounts, and the other way round).
+4. On the **گشتی** page, turn on notifications to get a browser push alert for every new `/signup` order. Works in Chrome/Edge on Android and Windows; on iPhone, add the site to the Home Screen first. Nothing to set up: the push keys are made on first use (table `push_keys`).
+5. Create your plans in **پلانەکان**, and set the trial days, grace days and your WhatsApp number in **ڕێکخستن**.
 
 ---
 

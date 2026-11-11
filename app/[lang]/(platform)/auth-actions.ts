@@ -1,12 +1,15 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { normalizePhone } from "@/lib/format";
+import { displayPhone, fill, normalizePhone } from "@/lib/format";
+import { notifySuperAdmins } from "@/lib/push";
+import { DICTS } from "@/lib/i18n/dictionaries";
 import { getActionI18n } from "@/lib/i18n/request";
-import { splitLocale } from "@/lib/i18n/config";
+import { localePath, splitLocale } from "@/lib/i18n/config";
 import type { Dict } from "@/lib/i18n/dictionaries";
 import type { ActionState } from "@/lib/fields";
 
@@ -70,11 +73,25 @@ export async function requestShop(_prev: ActionState, formData: FormData): Promi
       note: input.note || null,
     });
     if (error) return fail(t.signup.errors.sendFailed, formData);
+
+    // Push alert to you, after the visitor already has their answer.
+    after(() =>
+      notifySuperAdmins((lang) => ({
+        title: DICTS[lang].push.newOrderTitle,
+        body: fill(DICTS[lang].push.newOrderBody, { shop: input.shop_name, owner: input.owner_name, phone: displayPhone(phone) }),
+        url: localePath(lang, "/super/requests"),
+        tag: "shop-request",
+      })).catch((e) => console.error("order push failed", e)),
+    );
   }
   return { ok: true, values: { phone }, nonce: Date.now() };
 }
 
-export async function login(_prev: ActionState, formData: FormData): Promise<ActionState> {
+// Two separate logins: /login for shop owners and staff, /super/login for
+// you. Each one refuses the other kind of account.
+type LoginKind = "owner" | "super";
+
+async function signIn(kind: LoginKind, formData: FormData): Promise<ActionState> {
   const { t, href } = await getActionI18n();
   const parsed = z
     .object({
@@ -84,16 +101,38 @@ export async function login(_prev: ActionState, formData: FormData): Promise<Act
     })
     .safeParse(Object.fromEntries(formData));
   const values = { email: String(formData.get("email") ?? "") };
-  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message, values, nonce: Date.now() };
+  const fail = (message?: string): ActionState => ({ ok: false, message, values, nonce: Date.now() });
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message);
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
-  if (error || !data.user) return { ok: false, message: t.login.wrong, values, nonce: Date.now() };
-
-  // `next` is a path without the language prefix (proxy.ts / lib/auth.ts set it).
-  const next = parsed.data.next ?? "";
-  if (next.startsWith("/") && !next.startsWith("//")) redirect(splitLocale(next).prefix ? next : href(next));
+  if (error || !data.user) return fail(t.login.wrong);
 
   const { data: profile } = await supabase.from("profiles").select("is_super_admin").eq("id", data.user.id).maybeSingle();
-  redirect(href(profile?.is_super_admin ? "/super" : "/dashboard"));
+  const isSuper = !!profile?.is_super_admin;
+  if (isSuper !== (kind === "super")) {
+    await supabase.auth.signOut();
+    return fail(kind === "super" ? t.login.notAdmin : t.login.adminAccount);
+  }
+
+  // `next` is a path without the language prefix (proxy.ts / lib/auth.ts set
+  // it). Each login only follows links into its own area.
+  const home = kind === "super" ? "/super" : "/dashboard";
+  const next = parsed.data.next ?? "";
+  if (next.startsWith("/") && !next.startsWith("//")) {
+    const { path } = splitLocale(next);
+    const isSuperPath = path === "/super" || path.startsWith("/super/");
+    if (isSuperPath === (kind === "super")) redirect(splitLocale(next).prefix ? next : href(next));
+  }
+  redirect(href(home));
+}
+
+/** /login: shop owners and staff only. */
+export async function login(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  return signIn("owner", formData);
+}
+
+/** /super/login: the super admin only. */
+export async function superLogin(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  return signIn("super", formData);
 }

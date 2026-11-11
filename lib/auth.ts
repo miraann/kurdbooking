@@ -33,7 +33,9 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
 
 export async function requireUser(next = "/dashboard"): Promise<SessionUser> {
   const user = await getSessionUser();
-  if (!user) return go(`/login?next=${encodeURIComponent(next)}`);
+  // Two logins: /super/login for you, /login for shops.
+  const login = next === "/super" || next.startsWith("/super/") ? "/super/login" : "/login";
+  if (!user) return go(`${login}?next=${encodeURIComponent(next)}`);
   return user;
 }
 

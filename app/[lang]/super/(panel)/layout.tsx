@@ -5,11 +5,17 @@ import { requireSuperAdmin } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
 import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
-import { signOut } from "@/app/[lang]/dashboard/actions";
+import { signOutSuper } from "@/app/[lang]/super/actions";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
-  return { title: t.super.badge, robots: { index: false } };
+  return {
+    title: t.super.badge,
+    robots: { index: false },
+    // "Add to Home Screen" on iPhone: needed there for push alerts.
+    manifest: "/super.webmanifest",
+    appleWebApp: { capable: true, title: "KB Admin" },
+  };
 }
 
 const LINKS = [
@@ -38,7 +44,7 @@ export default async function SuperLayout({ children }: LayoutProps<"/[lang]/sup
             ))}
           </nav>
           <LanguageSwitcher />
-          <form action={signOut}>
+          <form action={signOutSuper}>
             <button className="btn-ghost px-3 py-1.5 text-xs">{t.common.logout}</button>
           </form>
         </div>

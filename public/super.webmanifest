@@ -1,0 +1,10 @@
+{
+  "name": "KurdBooking Admin",
+  "short_name": "KB Admin",
+  "start_url": "/super",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fafafc",
+  "theme_color": "#4f46e5",
+  "icons": [{ "src": "/favicon.ico", "sizes": "any", "type": "image/x-icon" }]
+}

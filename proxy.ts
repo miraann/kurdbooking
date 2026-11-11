@@ -9,7 +9,8 @@
 //    Only when NEXT_PUBLIC_ROOT_DOMAIN is set. Without it, shops live at
 //    /s/<slug> on the main site and nothing is rewritten.
 // 3. Owner/admin areas (/dashboard, /super, /login): refreshes the Supabase
-//    session cookie, and sends logged-out visitors to /login.
+//    session cookie, and sends logged-out visitors to their login: /login for
+//    shops, /super/login for the super admin (two separate logins).
 //
 // Pages still check the user themselves (lib/auth.ts); this is not the only
 // guard. See the Next.js 16 proxy docs: node_modules/next/dist/docs.
@@ -32,6 +33,7 @@ function shopSlugFromHost(host: string): string | null {
 }
 
 const PROTECTED = ["/dashboard", "/super"];
+const SUPER_LOGIN = "/super/login";
 const NEEDS_SESSION = [...PROTECTED, "/login"];
 const under = (path: string, list: string[]) => list.some((p) => path === p || path.startsWith(`${p}/`));
 
@@ -108,9 +110,9 @@ export async function proxy(request: NextRequest) {
   // Validates the token (and refreshes it when needed).
   const { data } = await supabase.auth.getClaims();
 
-  if (!data?.claims && under(path, PROTECTED)) {
+  if (!data?.claims && under(path, PROTECTED) && path !== SUPER_LOGIN) {
     const login = request.nextUrl.clone();
-    login.pathname = localePath(lang, "/login");
+    login.pathname = localePath(lang, under(path, ["/super"]) ? SUPER_LOGIN : "/login");
     login.search = `?next=${encodeURIComponent(path)}`;
     return NextResponse.redirect(login);
   }
@@ -121,6 +123,7 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     // Everything except Next internals and static files.
-    "/((?!_next/static|_next/image|favicon\\.ico|font/|icons/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|otf|txt|xml|json)$).*)",
+    // sw.js (push alerts) must stay at the site root, not under a language.
+    "/((?!_next/static|_next/image|favicon\\.ico|sw\\.js|font/|icons/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|otf|txt|xml|json|webmanifest)$).*)",
   ],
 };

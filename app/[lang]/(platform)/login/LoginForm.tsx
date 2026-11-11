@@ -4,11 +4,12 @@ import { useActionState } from "react";
 import { initialActionState } from "@/lib/fields";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { SubmitButton } from "@/components/ui/SubmitButton";
-import { login } from "../auth-actions";
+import { login, superLogin } from "../auth-actions";
 
-export function LoginForm({ next }: { next?: string }) {
+/** `admin` = the super admin login (/super/login); otherwise the shop login. */
+export function LoginForm({ next, admin = false }: { next?: string; admin?: boolean }) {
   const { t } = useI18n();
-  const [state, action] = useActionState(login, initialActionState);
+  const [state, action] = useActionState(admin ? superLogin : login, initialActionState);
   return (
     <form action={action} key={state.nonce ?? 0} className="card space-y-4">
       {next && <input type="hidden" name="next" value={next} />}

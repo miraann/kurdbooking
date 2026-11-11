@@ -105,6 +105,9 @@ const en: Dict = {
     password: "Password",
     invalidEmail: "The email isn't valid",
     passwordRequired: "Enter your password",
+    adminTitle: "Super admin login",
+    notAdmin: "This account is not a super admin account.",
+    adminAccount: "This is the super admin account. Log in from the admin login page.",
     wrong: "Wrong email or password",
   },
 
@@ -318,6 +321,25 @@ const en: Dict = {
 
   myBookings: {
     none: "You haven't booked anything on this device.",
+  },
+
+  push: {
+    title: "Notifications",
+    onHelp: "You get an alert on this device when a new order comes in.",
+    offHelp: "Get an alert on this device when a new order comes in.",
+    unsupported: "This browser doesn't support notifications. Use Chrome or Edge.",
+    iosInstall: "On iPhone: in Safari tap Share → “Add to Home Screen”, then open it from there.",
+    denied: "Notifications are blocked in the browser settings. Allow them there.",
+    turnOn: "Turn on notifications",
+    turnOff: "Turn off",
+    test: "Send a test",
+    testSent: "Sent ✓",
+    testFailed: "No device received the alert",
+    failed: "Turning on notifications failed",
+    testTitle: "KurdBooking",
+    testBody: "Notifications work ✓",
+    newOrderTitle: "New order",
+    newOrderBody: "{shop} · {owner} · {phone}",
   },
 
   super: {

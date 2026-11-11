@@ -5,6 +5,8 @@ import { daysUntil } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { SHOP_STATUS } from "@/lib/labels";
 import type { Shop, ShopStatus } from "@/lib/types";
+import { pushPublicKey } from "@/lib/push";
+import { PushAlerts } from "@/components/super/PushAlerts";
 
 export default async function SuperHome() {
   const [, { lang, t, f, href }] = await Promise.all([requireSuperAdmin(), getI18n()]);
@@ -14,10 +16,11 @@ export default async function SuperHome() {
   monthStart.setUTCDate(1);
   monthStart.setUTCHours(0, 0, 0, 0);
 
-  const [{ data: shops }, { data: payments }, { count: newRequests }] = await Promise.all([
+  const [{ data: shops }, { data: payments }, { count: newRequests }, publicKey] = await Promise.all([
     supabase.from("shops").select("id, name, slug, status, trial_ends_at, paid_until, timezone"),
     supabase.from("payments").select("amount_iqd").gte("paid_at", monthStart.toISOString()),
     supabase.from("shop_requests").select("id", { count: "exact", head: true }).eq("status", "new"),
+    pushPublicKey(),
   ]);
   const all = (shops ?? []) as Pick<Shop, "id" | "name" | "slug" | "status" | "trial_ends_at" | "paid_until" | "timezone">[];
 
@@ -38,6 +41,7 @@ export default async function SuperHome() {
           <span className="text-2xl font-bold text-brand">{f.num(newRequests)}</span>
         </Link>
       )}
+      <PushAlerts publicKey={publicKey} />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Stat label={h.allShops} value={f.num(all.length)} />
         <Stat label={SHOP_STATUS.active[lang]} value={f.num(byStatus("active"))} />
