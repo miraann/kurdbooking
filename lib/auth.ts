@@ -93,14 +93,14 @@ export const getShopContext = cache(async (): Promise<ShopContext | null> => {
 
 /**
  * For /dashboard pages and actions. Logged-out → /login; no shop yet →
- * /signup (or /super for you). Pass roles to restrict, e.g. ["owner"].
+ * /signup, the order form (or /super for you). Pass roles to restrict, e.g. ["owner"].
  */
 export async function requireShop(roles?: MemberRole[]): Promise<ShopContext> {
   const user = await requireUser("/dashboard");
   const ctx = await getShopContext();
   if (!ctx) {
     const profile = await getProfile(user.id);
-    return go(profile?.is_super_admin ? "/super" : "/signup?step=shop");
+    return go(profile?.is_super_admin ? "/super" : "/signup");
   }
   if (roles && !roles.includes(ctx.role)) return go("/dashboard");
   return ctx;

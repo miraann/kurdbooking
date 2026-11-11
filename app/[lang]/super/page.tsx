@@ -14,9 +14,10 @@ export default async function SuperHome() {
   monthStart.setUTCDate(1);
   monthStart.setUTCHours(0, 0, 0, 0);
 
-  const [{ data: shops }, { data: payments }] = await Promise.all([
+  const [{ data: shops }, { data: payments }, { count: newRequests }] = await Promise.all([
     supabase.from("shops").select("id, name, slug, status, trial_ends_at, paid_until, timezone"),
     supabase.from("payments").select("amount_iqd").gte("paid_at", monthStart.toISOString()),
+    supabase.from("shop_requests").select("id", { count: "exact", head: true }).eq("status", "new"),
   ]);
   const all = (shops ?? []) as Pick<Shop, "id" | "name" | "slug" | "status" | "trial_ends_at" | "paid_until" | "timezone">[];
 
@@ -31,6 +32,12 @@ export default async function SuperHome() {
   return (
     <div className="space-y-6">
       <h1 className="page-title">{t.super.nav.home}</h1>
+      {!!newRequests && (
+        <Link href={href("/super/requests")} className="card-emphasized flex items-center justify-between gap-3 p-4">
+          <span className="font-semibold text-indigo-700">{h.newRequests}</span>
+          <span className="text-2xl font-bold text-brand">{f.num(newRequests)}</span>
+        </Link>
+      )}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Stat label={h.allShops} value={f.num(all.length)} />
         <Stat label={SHOP_STATUS.active[lang]} value={f.num(byStatus("active"))} />

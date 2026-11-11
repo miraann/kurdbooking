@@ -14,6 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const LINKS = [
   { href: "/super", key: "home" },
+  { href: "/super/requests", key: "requests" },
   { href: "/super/shops", key: "shops" },
   { href: "/super/plans", key: "plans" },
   { href: "/super/settings", key: "settings" },

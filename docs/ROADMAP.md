@@ -27,7 +27,8 @@ Status as of 2026-11-11: phases 1–4 are built. Everything below is checked by 
 - [x] Plan limits on staff, photos and locations
 
 ## ✅ Phase 4: Platform + super admin
-- [x] Landing, pricing (from your plans), signup (account + shop + trial in one step), login
+- [x] Landing, pricing (from your plans), login
+- [x] `/signup` is an order form only (saved to `shop_requests`); only the super admin creates shops (`/super/shops/new`, or from an order in `/super/requests`)
 - [x] `/super`: overview (shops by status, income this month, expiring this week)
 - [x] Shops list and search, shop detail, record payment, extend trial, suspend, cancel
 - [x] Plans editor (you create them), platform settings (trial days, grace days, support WhatsApp)

@@ -9,6 +9,7 @@ but its look and its tested features are the reference.
 Every page lives under `app/[lang]/` (see **Languages** below), so the folders are:
 
 - **Side 1, seller platform:** landing, `/pricing` and `/signup` in `app/[lang]/(platform)`. The owner of the platform uses `/super` (`app/[lang]/super`).
+  - `/signup` is only an order form: it saves a row in `shop_requests`, no account and no shop. **Only the super admin creates shops**, in `/super/shops/new` (or from an order in `/super/requests`).
 - **Side 2, each shop:**
   - The owner dashboard is `/dashboard` (`app/[lang]/dashboard`). The Android, iOS and Windows apps open this page.
   - The public shop page is `/s/<slug>` (`app/[lang]/s/[shop]`). Once a domain is set it is also `<slug>.<root-domain>`, through `proxy.ts`.
@@ -42,7 +43,7 @@ Setup and commands are in `README.md`. What is built and what is next is in `doc
 - **Pick the right Supabase client:**
   - `lib/supabase/server.ts` acts as the user, so RLS applies. Use it by default.
   - `lib/supabase/public.ts` has no cookies, for `'use cache'` reads of public content.
-  - `lib/supabase/admin.ts` uses the secret key and bypasses RLS. Use it only after an auth check, or for public booking and signup, and always filter by `shop_id` yourself.
+  - `lib/supabase/admin.ts` uses the secret key and bypasses RLS. Use it only after an auth check, or for public booking and the `/signup` order form, and always filter by `shop_id` yourself.
 - **`customers` and `appointments` are never public.** Bookings are written by `app/[lang]/s/[shop]/book/actions.ts`, which re-checks the slot. The database `appointments_no_overlap` constraint is the final guard.
 - **Subscription status is changed only by `record_payment`, `extend_trial` and `refresh_shop_statuses`** (all in `0004_functions.sql`), or by the super admin.
 - **To change the database:** add a new migration file (`0007_….sql`, never edit an applied one). Then add checks to `supabase/tests/db.test.mjs` and run `npm test`.

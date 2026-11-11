@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getI18n } from "@/lib/i18n/server";
+import { fill } from "@/lib/format";
 import { SHOP_KIND, SHOP_STATUS } from "@/lib/labels";
 import type { Shop } from "@/lib/types";
 
@@ -15,13 +16,24 @@ export default async function SuperShops({ searchParams }: PageProps<"/[lang]/su
   let query = supabase.from("shops").select("*").order("created_at", { ascending: false }).limit(500);
   if (q) query = query.or(`name.ilike.%${q.replace(/[%,()]/g, "")}%,slug.ilike.%${q.replace(/[%,()]/g, "")}%`);
   if (typeof status === "string" && status in SHOP_STATUS) query = query.eq("status", status);
-  const { data, error } = await query;
+  const [{ data, error }, { count: newRequests }] = await Promise.all([
+    query,
+    supabase.from("shop_requests").select("id", { count: "exact", head: true }).eq("status", "new"),
+  ]);
   if (error) throw error;
   const shops = (data ?? []) as Shop[];
 
   return (
     <div className="space-y-5">
-      <h1 className="page-title">{t.super.nav.shops}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="page-title">{t.super.nav.shops}</h1>
+        <Link href={href("/super/shops/new")} className="btn-primary">{s.newShop}</Link>
+      </div>
+      {!!newRequests && (
+        <Link href={href("/super/requests")} className="card-emphasized block p-4 text-sm font-semibold text-indigo-700">
+          {fill(s.newRequests, { n: f.num(newRequests) })}
+        </Link>
+      )}
       <form className="flex flex-wrap gap-2">
         <input name="q" defaultValue={q} placeholder={s.searchPlaceholder} className="input max-w-xs" />
         <select name="status" defaultValue={typeof status === "string" ? status : ""} className="input w-auto">

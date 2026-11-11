@@ -10,26 +10,25 @@ import { splitLocale } from "@/lib/i18n/config";
 import type { Dict } from "@/lib/i18n/dictionaries";
 import type { ActionState } from "@/lib/fields";
 
-const SLUG = /^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/;
-
 /** Built per request so the messages are in the visitor's language. */
-const signupSchema = (t: Dict) => {
+const requestSchema = (t: Dict) => {
   const e = t.signup.errors;
   return z.object({
     shop_name: z.string().trim().min(2, e.shopNameShort).max(80, e.shopNameLong),
-    slug: z.string().trim().toLowerCase().regex(SLUG, e.slug),
     kind: z.enum(["barber", "salon", "both"]),
     owner_name: z.string().trim().min(2, e.ownerName).max(80),
-    phone: z.string().trim().min(7, e.phone),
-    email: z.string().trim().toLowerCase().email(t.login.invalidEmail),
-    password: z.string().min(8, e.password).max(72),
+    phone: z.string().trim().min(7, e.phone).max(20, e.phoneInvalid),
+    city: z.string().trim().max(60).optional(),
+    note: z.string().trim().max(500).optional(),
     website: z.string().max(0).optional(), // honeypot: bots fill it, people don't see it
   });
 };
 
+const REQUEST_KEYS = ["shop_name", "kind", "owner_name", "phone", "city", "note"];
+
 function formValues(formData: FormData): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const k of ["shop_name", "slug", "kind", "owner_name", "phone", "email"]) out[k] = String(formData.get(k) ?? "");
+  for (const k of REQUEST_KEYS) out[k] = String(formData.get(k) ?? "");
   return out;
 }
 
@@ -37,49 +36,42 @@ const fail = (message: string, formData: FormData): ActionState => ({
   ok: false, message, values: formValues(formData), nonce: Date.now(),
 });
 
-/** Creates the owner account + the shop (trial), signs in, opens the dashboard. */
-export async function signup(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const { t, href } = await getActionI18n();
-  const e = t.signup.errors;
-  const parsed = signupSchema(t).safeParse(Object.fromEntries(formData));
+/**
+ * /signup: saves an order for the system. It creates no account and no shop:
+ * only you do that, from the order, in /super/shops/new.
+ */
+export async function requestShop(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { t } = await getActionI18n();
+  const parsed = requestSchema(t).safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? t.errors.invalidData, formData);
   const input = parsed.data;
   const phone = normalizePhone(input.phone);
-  if (!phone) return fail(e.phoneInvalid, formData);
+  if (!phone) return fail(t.signup.errors.phoneInvalid, formData);
 
+  // Public form → secret key (visitors can't write the table themselves).
   const admin = createAdminClient();
-  const { data: available, error: slugError } = await admin.rpc("slug_available", { p_slug: input.slug });
-  if (slugError) return fail(t.errors.generic, formData);
-  if (!available) return fail(e.slugTaken, formData);
 
-  // Created already confirmed: shop owners shouldn't get stuck on an email link.
-  const { data: created, error: userError } = await admin.auth.admin.createUser({
-    email: input.email,
-    password: input.password,
-    email_confirm: true,
-    user_metadata: { full_name: input.owner_name, phone },
-  });
-  if (userError || !created.user) {
-    const exists = userError?.code === "email_exists" || /already/i.test(userError?.message ?? "");
-    return fail(exists ? e.emailExists : e.accountFailed, formData);
+  // The same phone sending again within a day: keep the first order only.
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { count, error: countError } = await admin
+    .from("shop_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("phone", phone)
+    .gte("created_at", since);
+  if (countError) return fail(t.signup.errors.sendFailed, formData);
+
+  if (!count) {
+    const { error } = await admin.from("shop_requests").insert({
+      shop_name: input.shop_name,
+      kind: input.kind,
+      owner_name: input.owner_name,
+      phone,
+      city: input.city || null,
+      note: input.note || null,
+    });
+    if (error) return fail(t.signup.errors.sendFailed, formData);
   }
-
-  const { error: shopError } = await admin.rpc("create_shop_for_owner", {
-    p_owner_id: created.user.id,
-    p_name: input.shop_name,
-    p_slug: input.slug,
-    p_kind: input.kind,
-    p_owner_name: input.owner_name,
-    p_phone: phone,
-  });
-  if (shopError) {
-    await admin.auth.admin.deleteUser(created.user.id); // don't leave an account without a shop
-    return fail(shopError.message.includes("slug_taken") ? e.slugTaken : e.shopFailed, formData);
-  }
-
-  const supabase = await createClient();
-  await supabase.auth.signInWithPassword({ email: input.email, password: input.password });
-  redirect(href("/dashboard?welcome=1"));
+  return { ok: true, values: { phone }, nonce: Date.now() };
 }
 
 export async function login(_prev: ActionState, formData: FormData): Promise<ActionState> {

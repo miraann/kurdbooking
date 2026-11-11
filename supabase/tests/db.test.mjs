@@ -45,7 +45,7 @@ await db.exec(`
 `);
 
 // 0006 (pg_cron schedule) needs the cron extension, which PGlite doesn't have.
-for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql']) {
+for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql', '0009_shop_requests.sql']) {
   try { await db.exec(readFileSync(new URL(f, MIG), 'utf8')); console.log('applied', f); }
   catch (e) { console.log('MIGRATION FAILED', f, e.message, e.position ?? ''); process.exit(1); }
 }
@@ -288,6 +288,26 @@ await db.query(`update public.customers set blocked_at=null where id=$1`, [cust]
 await as(null);
 await book('2030-04-01 10:00+03', '2030-04-01 10:30+03');
 ok('unblocked customer can book again', true);
+
+// ── Shop orders (/signup) ──────────────────────────────────────────────────
+await as('anon');
+await expectError('anon cannot send an order directly', `insert into public.shop_requests (shop_name, owner_name, phone) values ('Shop','Owner','9647701234567')`, [], 'permission denied');
+await expectError('anon cannot read orders', `select * from public.shop_requests`, [], 'permission denied');
+await expectError('anon cannot create a shop', `select public.create_shop_for_owner($1,'x','anon-shop','barber','x','1')`, [users.ali], 'permission denied');
+await as(null);
+const order = (await db.query(`insert into public.shop_requests (shop_name, owner_name, phone, note) values ('New Shop','Owner','9647701234567','call after 5') returning id`)).rows[0].id;
+ok('server saves an order', !!order);
+await expectError('order needs a shop name', `insert into public.shop_requests (shop_name, owner_name, phone) values ('','Owner','9647701234567')`, [], 'check');
+await as('authenticated', users.ali);
+await expectError('owner cannot send an order directly', `insert into public.shop_requests (shop_name, owner_name, phone) values ('Shop','Owner','9647701234567')`, [], 'permission denied');
+ok('owner reads no orders', (await db.query(`select * from public.shop_requests`)).rows.length === 0);
+ok('owner cannot change an order', (await db.query(`update public.shop_requests set status='done'`)).affectedRows === 0);
+await expectError('owner cannot create a shop', `select public.create_shop_for_owner($1,'x','owner-shop','barber','x','1')`, [users.ali], 'permission denied');
+await as('authenticated', users.miran);
+ok('super reads orders', (await db.query(`select * from public.shop_requests`)).rows.length === 1);
+ok('super marks an order done', (await db.query(`update public.shop_requests set status='done', shop_id=$2 where id=$1`, [order, shopA])).affectedRows === 1);
+ok('super deletes an order', (await db.query(`delete from public.shop_requests where id=$1`, [order])).affectedRows === 1);
+await as(null);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

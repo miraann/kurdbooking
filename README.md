@@ -45,7 +45,7 @@ npm run dev
 | URL | What |
 |---|---|
 | http://localhost:3000 | Platform landing |
-| http://localhost:3000/signup | Register a shop (creates the owner account + trial) |
+| http://localhost:3000/signup | Order form: saves a request only. Shops are created by the super admin in `/super/shops/new` (or from `/super/requests`) |
 | http://localhost:3000/dashboard | Owner dashboard |
 | http://localhost:3000/s/&lt;slug&gt; | The shop's public page |
 | http://localhost:3000/super | Your super admin |
