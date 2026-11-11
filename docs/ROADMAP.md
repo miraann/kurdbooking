@@ -66,7 +66,7 @@ A separate app for customers (not the owner `/dashboard` app in `native/mobile`)
 - [ ] Move the device-saved "my bookings" and receipt tokens over to the account
 
 ## 🔜 Phase 7: Next features
-- [ ] **Block hours by hand**: the owner closes part of a day (e.g. 3:00–4:00), for the whole shop or one staff member. Today `blocked_dates` only closes whole days: add optional `start_time`/`end_time`, use them in the slot calculation, and add tests. Doesn't need the customer app, so it can be built first
+- [x] **Block hours by hand**: the owner closes part of a day (e.g. 3:00–4:00), for the whole shop or one staff member (`0007_blocked_hours.sql`, Schedule → closed days and hours)
 - [ ] **Waitlist**: when a day is full, a logged-in customer joins the waitlist for that day (and optional service/staff). When a booking is cancelled, everyone waiting gets a push; the first to book gets the slot (no holding). Needs customer accounts and push first
 - [ ] Password reset for owners (Supabase email + `/auth/callback` + new-password page)
 - [ ] Staff accounts: invite a barber/stylist to log in with role `staff`
