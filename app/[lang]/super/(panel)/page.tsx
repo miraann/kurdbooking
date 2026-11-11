@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -9,6 +10,7 @@ import { pushPublicKey } from "@/lib/push";
 import { PushAlerts } from "@/components/super/PushAlerts";
 
 export default async function SuperHome() {
+  await connection(); // uses the current time below, so never prerender this page
   const [, { lang, t, f, href }] = await Promise.all([requireSuperAdmin(), getI18n()]);
   const h = t.super.home;
   const supabase = await createClient();

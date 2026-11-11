@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import Link from "next/link";
 import { Ban, MessageCircle, Phone } from "lucide-react";
 import { canManage, requireShop } from "@/lib/auth";
@@ -29,6 +30,7 @@ const STATUS_STYLE: Record<AppointmentStatus, string> = {
 export default async function AppointmentsPage({ searchParams }: PageProps<"/[lang]/dashboard/appointments">) {
   const { view: rawView } = await searchParams;
   const view: View = rawView === "pending" || rawView === "past" ? rawView : "upcoming";
+  await connection(); // uses the current time below, so never prerender this page
   const [{ shop, role }, { lang, t, f, href }] = await Promise.all([requireShop(), getI18n()]);
   const manager = canManage(role);
   const ta = t.dashboard.appointments;

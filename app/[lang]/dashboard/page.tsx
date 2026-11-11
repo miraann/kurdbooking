@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import Link from "next/link";
 import { requireShop } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -9,6 +10,7 @@ import type { Appointment } from "@/lib/types";
 import { ShopQr } from "@/components/dashboard/ShopQr";
 
 export default async function DashboardHome() {
+  await connection(); // uses the current time below, so never prerender this page
   const [{ shop }, { lang, t, f, href }] = await Promise.all([requireShop(), getI18n()]);
   const h = t.dashboard.home;
   const supabase = await createClient();
