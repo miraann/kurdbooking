@@ -15,6 +15,7 @@ Every page lives under `app/[lang]/` (see **Languages** below), so the folders a
 - **Side 2, each shop:**
   - The owner dashboard is `/dashboard` (`app/[lang]/dashboard`). The Android, iOS and Windows apps open this page.
   - The public shop page is `/s/<slug>` (`app/[lang]/s/[shop]`). Once a domain is set it is also `<slug>.<root-domain>`, through `proxy.ts`.
+- **Customer side:** `/shops` (`app/[lang]/shops`) lists every live shop that is listed (`listed_shops()`, cached under `LISTED_SHOPS_TAG`), with a type filter and search. The customer app opens here, then `/s/<slug>`.
 
 Setup and commands are in `README.md`. What is built and what is next is in `docs/ROADMAP.md`.
 
@@ -72,7 +73,8 @@ The tokens and building blocks live in `app/globals.css` as Tailwind `@utility` 
 - the floating pill tab bar on phones
 - `.text-brand-gradient` for the keyword in a heading
 
-**The public shop page** follows zhewar's home page:
+**The customer side** (`/shops`, the public shop page, booking, my bookings, receipt) follows zhewar's home page, in red and blue.
+Use the pieces in `components/shop/theme.tsx` (`ShopStrip`, `LogoRing`, `Divider`, `Heading`) and the `card-shop` / `input-shop` / `btn-shop` / `btn-shop-accent` utilities, never the indigo `card` / `input` / `btn-primary`:
 - white background with `neutral-900` headings
 - the logo in a rotating two-colour ring
 - the accent → ✦ → primary divider

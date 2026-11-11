@@ -15,7 +15,7 @@ import { PAYMENT_FIELDS, PLAN_FIELDS, PLATFORM_SETTINGS_FIELDS, TRIAL_FIELDS } f
 import { getActionI18n } from "@/lib/i18n/request";
 import { DICTS } from "@/lib/i18n/dictionaries";
 import type { Lang } from "@/lib/i18n/config";
-import { shopSlugTag, shopTag } from "@/lib/shop-data";
+import { LISTED_SHOPS_TAG, shopSlugTag, shopTag } from "@/lib/shop-data";
 import { userMessage } from "@/lib/errors";
 
 // Every action starts with requireSuperAdmin(); RLS checks is_super_admin
@@ -229,6 +229,7 @@ export async function recordPayment(shopId: string, slug: string, _prev: ActionS
     return failed(lang, e, fields, formData);
   }
   updateTag(shopSlugTag(slug));
+  updateTag(LISTED_SHOPS_TAG); // the shop may now be live (or not) in the customer list
   refresh();
   return done(t.super.shop.paymentRecorded);
 }
@@ -245,6 +246,7 @@ export async function extendTrial(shopId: string, slug: string, _prev: ActionSta
     return failed(lang, e, TRIAL_FIELDS, formData);
   }
   updateTag(shopSlugTag(slug));
+  updateTag(LISTED_SHOPS_TAG); // the shop may now be live (or not) in the customer list
   refresh();
   return done(t.super.shop.trialExtended);
 }
@@ -256,6 +258,7 @@ export async function setShopHidden(shopId: string, hidden: boolean): Promise<Ac
   const supabase = await createClient();
   const { error } = await supabase.from("shops").update({ hidden_by_admin: hidden }).eq("id", shopId);
   if (error) return { ok: false, message: userMessage(error, lang) };
+  updateTag(LISTED_SHOPS_TAG);
   refresh();
   return { ok: true };
 }
@@ -281,6 +284,7 @@ export async function setShopStatus(shopId: string, slug: string, status: "suspe
   const { error } = await supabase.from("shops").update({ status }).eq("id", shopId);
   if (error) return { ok: false, message: userMessage(error, lang) };
   updateTag(shopSlugTag(slug));
+  updateTag(LISTED_SHOPS_TAG);
   refresh();
   return { ok: true };
 }

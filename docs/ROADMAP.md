@@ -53,7 +53,8 @@ A separate app for customers (not the owner `/dashboard` app in `native/mobile`)
   - `my_appointments()` and `cancel_my_appointment()` for the logged-in customer
   - `reviews` with `submit_review()`, `reply_to_review()`, `set_review_hidden()`, and public `shop_rating()` / `shop_reviews()`
 
-- [ ] Home screen: list of all active shops (not suspended/cancelled) with logo, name, rating; filter by type: هەموو / سەرتاشخانە / ئارایشتگای خانمان, and search by name. No city filter: launch is Sulaimani only (add `shops.city` later when other cities join)
+- [x] **Web shops list** `/shops` in zhewar red/blue (the app will open this page); booking, my bookings and the receipt restyled to match zhewar
+- [ ] Home screen in the app: list of all active shops (not suspended/cancelled) with logo, name, rating; filter by type: هەموو / سەرتاشخانە / ئارایشتگای خانمان, and search by name. No city filter: launch is Sulaimani only (add `shops.city` later when other cities join)
 - [x] «پیشاندان لە ئەپ» switch: `shops.listed` (default on), switch in Dashboard → Settings; `/super` shop page can hide a shop from the app. Hidden shops still work by link/QR
 - [ ] Shop page inside the app: same content as `/s/<slug>`, readable without an account
 - [ ] Customer accounts with Supabase Auth: **phone number + password**. Browsing needs no account; **an account is required only to book.**

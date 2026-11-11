@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { getPublicShop, getShopContent } from "@/lib/shop-data";
 import { shopBasePath } from "@/lib/tenant";
 import { todayKey } from "@/lib/booking";
+import { Heading } from "@/components/shop/theme";
 import { BookingForm } from "./BookingForm";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -21,14 +22,14 @@ export default async function BookPage({ params }: PageProps<"/[lang]/s/[shop]/b
   if (!c.profile?.booking_enabled || c.services.length === 0) {
     return (
       <main className="mx-auto max-w-xl px-4 py-16 text-center">
-        <p className="card text-slate-600">{t.booking.unavailable}</p>
+        <p className="card-shop text-neutral-600">{t.booking.unavailable}</p>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold" style={{ color: "var(--shop-primary)" }}>{t.booking.title}</h1>
+    <main className="mx-auto max-w-2xl px-4 pt-10">
+      <Heading as="h1" eyebrow="BOOKING" title={t.booking.title} />
       <BookingForm
         slug={slug}
         base={base}

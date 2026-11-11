@@ -2,7 +2,7 @@ import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 import type {
-  GalleryPhoto, Location, Post, PublicReview, PublicShop, Service, ShopProfile, SocialLink, Staff, WorkingHours,
+  GalleryPhoto, Location, Post, PublicReview, PublicShop, Service, ShopKind, ShopProfile, SocialLink, Staff, WorkingHours,
 } from "@/lib/types";
 
 // Cached reads for the public shop pages. They use the public client (no
@@ -11,6 +11,8 @@ import type {
 
 export const shopTag = (shopId: string) => `shop-${shopId}`;
 export const shopSlugTag = (slug: string) => `shop-slug-${slug}`;
+/** The customer shops list (/shops). Any listing, status or branding change refreshes it. */
+export const LISTED_SHOPS_TAG = "listed-shops";
 export const isValidSlug = (slug: string) => /^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(slug);
 
 export async function getPublicShop(slug: string): Promise<PublicShop | null> {
@@ -21,6 +23,32 @@ export async function getPublicShop(slug: string): Promise<PublicShop | null> {
   const { data, error } = await createPublicClient().rpc("shop_by_slug", { p_slug: slug }).maybeSingle();
   if (error) throw error;
   return (data as PublicShop | null) ?? null;
+}
+
+export interface ListedShop {
+  id: string;
+  slug: string;
+  name: string;
+  kind: ShopKind;
+  tagline: string | null;
+  logo_url: string | null;
+  cover_url: string | null;
+  rating_avg: number | null;
+  rating_count: number;
+}
+
+/** Shops shown in the customer list: live, listed by the owner, not hidden by you (0008 listed_shops). */
+export async function getListedShops(kind: "barber" | "salon" | null, search: string): Promise<ListedShop[]> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(LISTED_SHOPS_TAG);
+
+  const { data, error } = await createPublicClient().rpc("listed_shops", { p_kind: kind, p_search: search || null });
+  if (error) throw error;
+  return ((data ?? []) as (ListedShop & { rating_avg: number | string | null })[]).map((s) => ({
+    ...s,
+    rating_avg: s.rating_avg == null ? null : Number(s.rating_avg),
+  }));
 }
 
 export interface ShopReviews {

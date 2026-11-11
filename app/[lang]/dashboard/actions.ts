@@ -11,7 +11,7 @@ import type { ActionState } from "@/lib/fields";
 import { isResourceKey, RESOURCES, type ResourceKey } from "@/lib/resources";
 import { withShopOptions } from "@/lib/resources.server";
 import { APP_FIELDS, BOOKING_FIELDS, PROFILE_FIELDS, REPLY_FIELDS } from "@/lib/forms";
-import { shopSlugTag, shopTag } from "@/lib/shop-data";
+import { LISTED_SHOPS_TAG, shopSlugTag, shopTag } from "@/lib/shop-data";
 import { userMessage } from "@/lib/errors";
 import { digits, fill } from "@/lib/format";
 import { getActionI18n } from "@/lib/i18n/request";
@@ -26,6 +26,7 @@ const saved = (lang: Lang): ActionState => ({ ok: true, message: DICTS[lang].com
 
 function afterChange(shopId: string) {
   updateTag(shopTag(shopId)); // public shop page shows the change at once
+  updateTag(LISTED_SHOPS_TAG); // and the customer shops list (logo, tagline …)
   refresh(); // re-render the dashboard page
 }
 
@@ -150,6 +151,7 @@ export async function saveAppListing(_prev: ActionState, formData: FormData): Pr
   } catch (e) {
     return { ok: false, message: userMessage(e, lang), nonce: Date.now() };
   }
+  updateTag(LISTED_SHOPS_TAG);
   refresh();
   return saved(lang);
 }

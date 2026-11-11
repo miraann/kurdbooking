@@ -135,6 +135,18 @@
   background: var(--shop-accent);
 }
 
+/* Customer side (shops list, shop pages, booking, receipt): zhewar's white
+   cards with neutral borders, and inputs that light up in the shop's blue. */
+@utility card-shop {
+  @apply rounded-3xl border border-neutral-100 bg-white p-5 shadow-md-1;
+}
+@utility input-shop {
+  @apply h-14 w-full rounded-2xl border border-neutral-200 bg-neutral-50/60 px-4 text-sm text-neutral-900 placeholder-neutral-400 outline-none transition-colors duration-200 focus:bg-white;
+  &:focus {
+    border-color: color-mix(in srgb, var(--shop-primary) 60%, transparent);
+  }
+}
+
 /* .admin-input */
 @utility input {
   @apply w-full rounded-2xl border border-transparent bg-slate-100/60 px-4 py-3.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all duration-200 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 disabled:cursor-not-allowed disabled:opacity-50;

@@ -1,12 +1,13 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { CalendarPlus, Clock, ExternalLink, MapPin, MessageCircle, Phone, Scissors, Search, Sparkles } from "lucide-react";
+import { CalendarPlus, Clock, ExternalLink, MapPin, MessageCircle, Phone, Search } from "lucide-react";
 import { getPublicShop, getShopContent, getShopReviews, isValidSlug } from "@/lib/shop-data";
 import { shopBasePath } from "@/lib/tenant";
 import { displayPhone, fill, whatsappLink } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { SOCIAL_PLATFORM } from "@/lib/labels";
 import { Stars } from "@/components/ui/Stars";
+import { Divider, Heading, LogoRing } from "@/components/shop/theme";
 
 // Public shop home, in the zhewar home-page style: centred hero with the logo
 // in a rotating two-colour ring, red→blue divider, blue "book" + red "my
@@ -25,8 +26,6 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/s/[shop]">
 }
 
 const WEEK = [6, 0, 1, 2, 3, 4, 5]; // Saturday first
-const RING =
-  "conic-gradient(var(--shop-accent) 0deg, var(--shop-accent) 110deg, #f8fafc 135deg, var(--shop-primary) 160deg, var(--shop-primary) 290deg, #f8fafc 315deg, var(--shop-accent) 360deg)";
 
 export default async function ShopHome({ params }: PageProps<"/[lang]/s/[shop]">) {
   const { shop: slug } = await params;
@@ -51,33 +50,13 @@ export default async function ShopHome({ params }: PageProps<"/[lang]/s/[shop]">
         <div className="pointer-events-none absolute -start-20 bottom-0 size-72 rounded-full opacity-[0.06] blur-3xl" style={{ background: "var(--shop-accent)" }} />
 
         <div className="relative mx-auto flex w-full max-w-xs flex-col items-center gap-4 text-center sm:max-w-sm sm:gap-5">
-          {/* Logo in the rotating two-colour ring */}
-          <div className="relative size-52 shrink-0 sm:size-64">
-            <div className="absolute inset-0 rounded-full motion-safe:animate-ring-rotate" style={{ background: RING }} />
-            <div className="absolute inset-[3px] rounded-full bg-white">
-              <div className="absolute inset-[2px] grid place-items-center overflow-hidden rounded-full bg-neutral-100">
-                {p?.logo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.logo_url} alt={shop.name} className="size-full object-cover" />
-                ) : shop.kind === "salon" ? (
-                  <Sparkles className="size-16" style={{ color: "var(--shop-primary)" }} aria-hidden />
-                ) : (
-                  <Scissors className="size-16" style={{ color: "var(--shop-primary)" }} aria-hidden />
-                )}
-              </div>
-            </div>
-          </div>
+          <LogoRing logoUrl={p?.logo_url} kind={shop.kind} alt={shop.name} />
 
           <h1 className="font-display text-[2.5rem] font-bold leading-[1.05] tracking-tight text-neutral-900 sm:text-[3.25rem]">
             {shop.name}
           </h1>
 
-          {/* Divider: accent → ✦ → primary */}
-          <div className="flex w-full items-center justify-center gap-3">
-            <div className="h-[2px] max-w-[80px] flex-1 rounded-full" style={{ background: "linear-gradient(to right, transparent, var(--shop-accent))" }} />
-            <span className="text-xs text-neutral-400">✦</span>
-            <div className="h-[2px] max-w-[80px] flex-1 rounded-full" style={{ background: "linear-gradient(to left, transparent, var(--shop-primary))" }} />
-          </div>
+          <Divider />
 
           {p?.tagline && <p className="text-balance px-2 text-[0.95rem] font-medium leading-relaxed text-neutral-500">{p.tagline}</p>}
 
@@ -212,7 +191,7 @@ export default async function ShopHome({ params }: PageProps<"/[lang]/s/[shop]">
               )}
               <ul className="grid gap-3 sm:grid-cols-2">
                 {reviews.latest.map((r) => (
-                  <li key={r.id} className="space-y-2 rounded-3xl border border-neutral-100 bg-white p-5 shadow-md-1">
+                  <li key={r.id} className="space-y-2 card-shop">
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-bold">{r.reviewer_name || "—"}</span>
                       <Stars rating={r.rating} />
@@ -262,7 +241,7 @@ export default async function ShopHome({ params }: PageProps<"/[lang]/s/[shop]">
               </div>
             )}
 
-            <div className="space-y-3 rounded-3xl border border-neutral-100 bg-white p-5 shadow-md-1">
+            <div className="space-y-3 card-shop">
               {p?.phone && (
                 <a href={`tel:${displayPhone(p.phone)}`} className="btn-ghost w-full justify-between" dir="ltr">
                   {displayPhone(p.phone)} <Phone className="size-4" aria-hidden />
@@ -293,7 +272,7 @@ export default async function ShopHome({ params }: PageProps<"/[lang]/s/[shop]">
           <Section eyebrow="LOCATION" title={s.location}>
             <ul className="grid gap-4 md:grid-cols-2">
               {c.locations.map((loc) => (
-                <li key={loc.id} className="space-y-3 rounded-3xl border border-neutral-100 bg-white p-5 shadow-md-1">
+                <li key={loc.id} className="space-y-3 card-shop">
                   <p className="font-bold">{loc.name}</p>
                   {(loc.address || loc.city) && <p className="text-sm text-neutral-500">{[loc.address, loc.city].filter(Boolean).join(lang === "en" ? ", " : "، ")}</p>}
                   {loc.lat != null && loc.lng != null && (
@@ -324,15 +303,11 @@ export default async function ShopHome({ params }: PageProps<"/[lang]/s/[shop]">
   );
 }
 
-/** zhewar section heading: small spaced Latin eyebrow, big title, two-colour rule. */
+/** zhewar section: heading with the Latin eyebrow, then the content. */
 function Section({ eyebrow, title, children }: { eyebrow: string; title: string; children: React.ReactNode }) {
   return (
     <section>
-      <div className="mb-8 text-center">
-        <p className="text-[0.6rem] tracking-[0.4em] text-neutral-400" dir="ltr">{eyebrow}</p>
-        <h2 className="mt-2 font-display text-4xl font-bold leading-tight text-neutral-900 sm:text-5xl">{title}</h2>
-        <div className="mx-auto mt-3 h-[2px] w-16 rounded-full" style={{ background: "linear-gradient(to left, var(--shop-accent), var(--shop-primary))" }} />
-      </div>
+      <Heading eyebrow={eyebrow} title={title} />
       {children}
     </section>
   );

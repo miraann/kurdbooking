@@ -69,6 +69,7 @@ const en: Dict = {
   },
 
   platform: {
+    findShop: "Find a shop",
     pricing: "Pricing",
     login: "Log in",
     start: "Get started",
@@ -317,10 +318,31 @@ const en: Dict = {
     price: "Price",
     status: "Status",
     beEarly: "Please arrive 5 minutes early",
+    shop: "Shop",
+    home: "Home",
+    cancelledHelp: "You can book a new time.",
   },
 
   myBookings: {
+    subtitle: "Bookings made on this device",
     none: "You haven't booked anything on this device.",
+  },
+
+  shops: {
+    metaTitle: "Shops",
+    title: "Find your shop",
+    subtitle: "Barbershops and women's salons. Open any shop and book your visit.",
+    search: "Search by shop name…",
+    searchButton: "Search",
+    all: "All",
+    barber: "Barbershops",
+    salon: "Women's salons",
+    count: "{n} shops",
+    none: "No shops found.",
+    showAll: "Show all shops",
+    isNew: "New",
+    view: "View & book",
+    allShops: "All shops",
   },
 
   push: {
