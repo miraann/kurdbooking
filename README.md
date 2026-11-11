@@ -63,7 +63,7 @@ where id = (select id from auth.users where email = 'YOUR-EMAIL');
 ```
 
 3. Log in at `/super/login` (the shop login at `/login` refuses super admin accounts, and the other way round).
-4. On the **گشتی** page, turn on notifications to get a browser push alert for every new `/signup` order. Works in Chrome/Edge on Android and Windows; on iPhone, add the site to the Home Screen first. Nothing to set up: the push keys are made on first use (table `push_keys`).
+4. On the **گشتی** page, turn on notifications to get a push alert for every new `/signup` order. Shop owners do the same in **ڕێکخستنەکان** for new bookings. Browser push works in Chrome/Edge on Android and Windows (on iPhone, add the site to the Home Screen first) and needs no setup. The Android app (FCM) needs `FIREBASE_SERVICE_ACCOUNT` in Vercel (see `.env.example`); it asks for permission on first open.
 5. Create your plans in **پلانەکان**, and set the trial days, grace days and your WhatsApp number in **ڕێکخستن**.
 
 ---

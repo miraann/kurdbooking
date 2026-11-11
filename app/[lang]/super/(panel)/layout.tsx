@@ -5,6 +5,7 @@ import { requireSuperAdmin } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
 import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
+import { NativePush } from "@/components/push/NativePush";
 import { signOutSuper } from "@/app/[lang]/super/actions";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -30,6 +31,7 @@ export default async function SuperLayout({ children }: LayoutProps<"/[lang]/sup
   const { t, href } = await getI18n();
   return (
     <div className="min-h-dvh">
+      <NativePush />
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
           <Link href={href("/super")} className="text-lg font-bold text-slate-900">

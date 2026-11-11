@@ -45,7 +45,7 @@ await db.exec(`
 `);
 
 // 0006 (pg_cron schedule) needs the cron extension, which PGlite doesn't have.
-for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql', '0009_shop_requests.sql', '0010_web_push.sql']) {
+for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql', '0009_shop_requests.sql', '0010_web_push.sql', '0011_native_push.sql']) {
   try { await db.exec(readFileSync(new URL(f, MIG), 'utf8')); console.log('applied', f); }
   catch (e) { console.log('MIGRATION FAILED', f, e.message, e.position ?? ''); process.exit(1); }
 }
@@ -327,6 +327,15 @@ await expectError('anon cannot read subscriptions', `select * from public.push_s
 await expectError('anon cannot read the push keys', `select * from public.push_keys`, [], 'permission denied');
 await as(null);
 await db.query(`insert into public.push_keys (public_key, private_key) values ('pub','priv')`);
+await as('authenticated', users.ali);
+await db.query(`insert into public.push_subscriptions (user_id, kind, platform, endpoint) values ($1,'fcm','android','fcm-token_123:ABC-x')`, [users.ali]);
+ok('user saves an app (FCM) token', true);
+await expectError('app token needs a platform', `insert into public.push_subscriptions (user_id, kind, endpoint) values ($1,'fcm','tok2')`, [users.ali], 'check');
+await expectError('app token cannot hold spaces or URLs', `insert into public.push_subscriptions (user_id, kind, platform, endpoint) values ($1,'fcm','android','https://x y')`, [users.ali], 'check');
+await expectError('browser subscription still needs its keys', `insert into public.push_subscriptions (user_id, endpoint) values ($1,'https://push.example/nokeys')`, [users.ali], 'check');
+await as('authenticated', users.sara);
+ok("sara cannot see Ali's app token", (await db.query(`select * from public.push_subscriptions where kind='fcm'`)).rows.length === 0);
+await as(null);
 await expectError('only one push key pair', `insert into public.push_keys (public_key, private_key) values ('pub2','priv2')`, [], 'duplicate key');
 
 console.log(`\n${pass} passed, ${fail} failed`);

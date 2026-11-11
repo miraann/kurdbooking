@@ -32,6 +32,7 @@ const en: Dict = {
     copied: "Copied ✓",
     unknown: "Unknown",
     wholeDay: "Whole day",
+    close: "Close",
   },
 
   errors: {
@@ -347,8 +348,8 @@ const en: Dict = {
 
   push: {
     title: "Notifications",
-    onHelp: "You get an alert on this device when a new order comes in.",
-    offHelp: "Get an alert on this device when a new order comes in.",
+    onHelp: "Alerts (new bookings, new orders) come to this device.",
+    offHelp: "Get an alert on this device when a new booking comes in.",
     unsupported: "This browser doesn't support notifications. Use Chrome or Edge.",
     iosInstall: "On iPhone: in Safari tap Share → “Add to Home Screen”, then open it from there.",
     denied: "Notifications are blocked in the browser settings. Allow them there.",
@@ -360,6 +361,10 @@ const en: Dict = {
     failed: "Turning on notifications failed",
     testTitle: "KurdBooking",
     testBody: "Notifications work ✓",
+    deniedApp: "Notifications are off for this app. Turn them on in the phone's Settings → Apps → KurdBooking.",
+    newBookingPending: "New booking · waiting",
+    newBookingConfirmed: "New booking",
+    newBookingBody: "{name} · {service} · {date} {time}",
     newOrderTitle: "New order",
     newOrderBody: "{shop} · {owner} · {phone}",
   },

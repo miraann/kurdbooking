@@ -4,6 +4,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { DashboardNav } from "@/components/dashboard/DashboardNav";
 import { ShopGate } from "@/components/dashboard/ShopGate";
 import { PageSkeleton } from "@/components/ui/PageSkeleton";
+import { NativePush } from "@/components/push/NativePush";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -15,6 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function DashboardLayout({ children }: LayoutProps<"/[lang]/dashboard">) {
   return (
     <div className="min-h-dvh md:flex">
+      <NativePush />
       <DashboardNav />
       {/* Bottom padding clears the floating tab bar on phones (zhewar's admin-bottomnav-clearance). */}
       <main className="mx-auto w-full max-w-4xl flex-1 px-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] pt-6 md:px-8 md:pb-10">

@@ -1,11 +1,15 @@
 "use server";
 
+import { after } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getShopContent } from "@/lib/shop-data";
 import { eligibleStaff, getAvailability } from "@/lib/availability.server";
 import { zonedToUtc } from "@/lib/booking";
-import { normalizePhone } from "@/lib/format";
+import { displayPhone, fill, fmt, normalizePhone } from "@/lib/format";
+import { notifyShop } from "@/lib/push";
+import { DICTS } from "@/lib/i18n/dictionaries";
+import { localePath } from "@/lib/i18n/config";
 import { getActionI18n } from "@/lib/i18n/request";
 import type { Dict } from "@/lib/i18n/dictionaries";
 
@@ -109,6 +113,20 @@ export async function bookAppointment(slug: string, raw: BookingInput): Promise<
   if (error?.message?.includes("customer_blocked")) return { ok: false, message: e.blocked };
   if (error || !appointment) return { ok: false, message: e.insertFailed };
 
-  // TODO (roadmap): push notification to the owner's apps (port lib/pushNotifications.ts from zhewar).
+  // Push alert to the owners/managers (and the chosen staff member), after
+  // the customer already has their answer.
+  const when = startsAt.toISOString();
+  after(() =>
+    notifyShop(shop.id, chosen.id, (lang) => {
+      const p = DICTS[lang].push;
+      const at = fmt(lang).instant(when, shop.timezone);
+      return {
+        title: status === "pending" ? p.newBookingPending : p.newBookingConfirmed,
+        body: fill(p.newBookingBody, { name: input.name, phone: displayPhone(phone), service: service.name, staff: chosen.name, date: at.date, time: at.time }),
+        url: localePath(lang, status === "pending" ? "/dashboard/appointments?view=pending" : "/dashboard/appointments"),
+        tag: `booking-${appointment.id}`,
+      };
+    }).catch((err) => console.error("booking push failed", err)),
+  );
   return { ok: true, id: appointment.id, token: appointment.public_token, status, staffName: chosen.name };
 }

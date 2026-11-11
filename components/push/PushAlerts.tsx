@@ -3,7 +3,8 @@
 import { useEffect, useState, useTransition } from "react";
 import { Bell, BellOff } from "lucide-react";
 import { useI18n } from "@/components/i18n/I18nProvider";
-import { removePushSubscription, savePushSubscription, sendTestPush } from "@/app/[lang]/super/actions";
+import { removePushSubscription, savePushSubscription, sendTestPush } from "@/app/[lang]/push-actions";
+import { enableNativePush, isNativeApp, nativeStatus } from "./native";
 
 type Status = "loading" | "unsupported" | "ios-install" | "denied" | "off" | "on";
 
@@ -19,11 +20,16 @@ async function registration() {
   return navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" });
 }
 
-/** Turn push alerts on/off for this browser (new /signup orders). */
+/**
+ * Notifications on/off for this device. In the Android app it uses native
+ * push (FCM); in a browser, Web Push. The server decides which alerts each
+ * person gets (lib/push.ts).
+ */
 export function PushAlerts({ publicKey }: { publicKey: string }) {
   const { t } = useI18n();
   const p = t.push;
   const [status, setStatus] = useState<Status>("loading");
+  const [native, setNative] = useState(false);
   const [message, setMessage] = useState("");
   const [pending, start] = useTransition();
 
@@ -31,6 +37,11 @@ export function PushAlerts({ publicKey }: { publicKey: string }) {
     let cancelled = false;
     const set = (s: Status) => !cancelled && setStatus(s);
     (async () => {
+      if (isNativeApp()) {
+        if (!cancelled) setNative(true);
+        const s = await nativeStatus();
+        return set(s === "granted" ? "on" : s === "denied" ? "denied" : "off");
+      }
       const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
       const standalone =
         window.matchMedia("(display-mode: standalone)").matches ||
@@ -58,6 +69,11 @@ export function PushAlerts({ publicKey }: { publicKey: string }) {
   const turnOn = () =>
     start(async () => {
       setMessage("");
+      if (native) {
+        const s = await enableNativePush();
+        setStatus(s === "granted" ? "on" : "denied");
+        return;
+      }
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
         setStatus(permission === "denied" ? "denied" : "off");
@@ -99,7 +115,7 @@ export function PushAlerts({ publicKey }: { publicKey: string }) {
   const note =
     status === "unsupported" ? p.unsupported
     : status === "ios-install" ? p.iosInstall
-    : status === "denied" ? p.denied
+    : status === "denied" ? (native ? p.deniedApp : p.denied)
     : status === "on" ? p.onHelp
     : status === "off" ? p.offHelp
     : "";
@@ -121,7 +137,8 @@ export function PushAlerts({ publicKey }: { publicKey: string }) {
         {status === "on" && (
           <>
             <button type="button" className="btn-tonal" disabled={pending} onClick={test}>{pending ? "…" : p.test}</button>
-            <button type="button" className="btn-ghost" disabled={pending} onClick={turnOff}>{p.turnOff}</button>
+            {/* In the app, notifications are switched off in the phone's settings. */}
+            {!native && <button type="button" className="btn-ghost" disabled={pending} onClick={turnOff}>{p.turnOff}</button>}
           </>
         )}
       </div>

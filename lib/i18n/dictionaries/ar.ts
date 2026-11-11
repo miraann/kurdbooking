@@ -34,6 +34,7 @@ const ar: Dict = {
     copied: "تم النسخ ✓",
     unknown: "غير معروف",
     wholeDay: "اليوم كله",
+    close: "إغلاق",
   },
 
   errors: {
@@ -349,8 +350,8 @@ const ar: Dict = {
 
   push: {
     title: "الإشعارات",
-    onHelp: "ستصلك إشعارات على هذا الجهاز عند وصول طلب جديد.",
-    offHelp: "استلم إشعاراً على هذا الجهاز عند وصول طلب جديد.",
+    onHelp: "تصل الإشعارات (مواعيد جديدة، طلبات جديدة) إلى هذا الجهاز.",
+    offHelp: "استلم إشعاراً على هذا الجهاز عند حجز موعد جديد.",
     unsupported: "هذا المتصفح لا يدعم الإشعارات. استخدم Chrome أو Edge.",
     iosInstall: "على الآيفون: في Safari اضغط زر المشاركة ← «إضافة إلى الشاشة الرئيسية»، ثم افتحه من هناك.",
     denied: "الإشعارات مغلقة في إعدادات المتصفح. فعّلها من هناك.",
@@ -362,6 +363,10 @@ const ar: Dict = {
     failed: "فشل تفعيل الإشعارات",
     testTitle: "KurdBooking",
     testBody: "الإشعارات تعمل ✓",
+    deniedApp: "الإشعارات مغلقة لهذا التطبيق. فعّلها من إعدادات الهاتف ← التطبيقات ← KurdBooking.",
+    newBookingPending: "موعد جديد · بانتظار التأكيد",
+    newBookingConfirmed: "موعد جديد",
+    newBookingBody: "{name} · {service} · {date} {time}",
     newOrderTitle: "طلب جديد",
     newOrderBody: "{shop} · {owner} · {phone}",
   },

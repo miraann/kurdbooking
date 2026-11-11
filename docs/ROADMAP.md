@@ -35,8 +35,10 @@ Status as of 2026-11-11: phases 1–4 are built. Everything below is checked by 
 
 ## 🔜 Phase 5: Apps and notifications
 - [x] Capacitor Android + iOS projects generated, Tauri Windows project with icons
-- [ ] Set the live URL and build: Android (Android Studio), iOS (Mac or cloud), Windows (Rust)
-- [ ] Push to owners on new bookings: FCM; port zhewar `lib/pushNotifications.ts`, save to `device_tokens`
+- [x] Live URL set in `native/mobile/capacitor.config.ts` (https://kurdbooking.vercel.app)
+- [ ] Build: Android (Android Studio), iOS (Mac or cloud), Windows (Rust)
+- [x] Push to owners/managers (and the booked staff member) on new bookings: browser push + Android app (FCM, Firebase project `kurdbooking`, `google-services.json` in `native/mobile/android/app`). Needs `FIREBASE_SERVICE_ACCOUNT` on Vercel for the app
+- [ ] iOS push: needs an Apple Developer account, then an APNs key uploaded to Firebase and `GoogleService-Info.plist`
 - [x] Browser push (Web Push, `lib/push.ts`, `public/sw.js`, tables `push_subscriptions` / `push_keys`): the super admin gets an alert for each new `/signup` order
 - [ ] Windows notifications (tauri-plugin-notification), or reuse the browser push above for owners
 - [ ] Notification sound choice (zhewar `notification_sound`)

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1032662907581",
+    "project_id": "kurdbooking",
+    "storage_bucket": "kurdbooking.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1032662907581:android:d29626d638e6c27ec895d4",
+        "android_client_info": {
+          "package_name": "com.kurdbooking.owner"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDCE_i5K5-oslutVGRfdQ6vhUjRKLT0LEU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

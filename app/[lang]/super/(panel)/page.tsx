@@ -7,7 +7,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { SHOP_STATUS } from "@/lib/labels";
 import type { Shop, ShopStatus } from "@/lib/types";
 import { pushPublicKey } from "@/lib/push";
-import { PushAlerts } from "@/components/super/PushAlerts";
+import { PushAlerts } from "@/components/push/PushAlerts";
 
 export default async function SuperHome() {
   await connection(); // uses the current time below, so never prerender this page

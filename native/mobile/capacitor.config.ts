@@ -3,10 +3,9 @@ import type { CapacitorConfig } from "@capacitor/cli";
 // The app is a thin native shell around the live owner dashboard, like the
 // zhewar admin app: every web deploy updates the app, no store release needed.
 //
-// Set the address before `npx cap sync`:
+// The live site. To point the app elsewhere, set KB_APP_URL before `npx cap sync`:
 //   PowerShell:  $env:KB_APP_URL = "https://kurdbooking.com"; npx cap sync
-// Before the domain is bought, use the Vercel address (https://<project>.vercel.app).
-const APP_URL = (process.env.KB_APP_URL || "https://REPLACE-ME.vercel.app").replace(/\/$/, "");
+const APP_URL = (process.env.KB_APP_URL || "https://kurdbooking.vercel.app").replace(/\/$/, "");
 const host = new URL(APP_URL).host;
 
 const config: CapacitorConfig = {

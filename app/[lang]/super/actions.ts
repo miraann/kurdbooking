@@ -7,13 +7,10 @@ import { requireSuperAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizePhone } from "@/lib/format";
-import { sendPush } from "@/lib/push";
-import { localePath } from "@/lib/i18n/config";
 import { echoValues, parseFields } from "@/lib/fields.server";
 import type { ActionState, Field } from "@/lib/fields";
 import { PAYMENT_FIELDS, PLAN_FIELDS, PLATFORM_SETTINGS_FIELDS, TRIAL_FIELDS } from "@/lib/forms";
 import { getActionI18n } from "@/lib/i18n/request";
-import { DICTS } from "@/lib/i18n/dictionaries";
 import type { Lang } from "@/lib/i18n/config";
 import { LISTED_SHOPS_TAG, shopSlugTag, shopTag } from "@/lib/shop-data";
 import { userMessage } from "@/lib/errors";
@@ -116,51 +113,6 @@ export async function signOutSuper() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect((await getActionI18n()).href("/super/login"));
-}
-
-// ── Push alerts (this browser) ──────────────────────────────────────────────
-const pushSubscriptionSchema = z.object({
-  endpoint: z.string().url().startsWith("https://").max(1000),
-  keys: z.object({ p256dh: z.string().min(1).max(200), auth: z.string().min(1).max(100) }),
-});
-
-/** Saves this browser for push alerts (new orders). */
-export async function savePushSubscription(subscription: unknown, userAgent: string): Promise<ActionState> {
-  const { lang, t } = await getActionI18n();
-  const user = await requireSuperAdmin();
-  const parsed = pushSubscriptionSchema.safeParse(subscription);
-  if (!parsed.success) return { ok: false, message: t.errors.invalidData };
-  const { endpoint, keys } = parsed.data;
-  // Secret key: the same browser may have been saved under another login
-  // before; it now belongs to whoever is logged in here.
-  const { error } = await createAdminClient().from("push_subscriptions").upsert(
-    { user_id: user.id, endpoint, p256dh: keys.p256dh, auth: keys.auth, lang, user_agent: userAgent.slice(0, 300) },
-    { onConflict: "endpoint" },
-  );
-  if (error) return { ok: false, message: userMessage(error, lang) };
-  return { ok: true };
-}
-
-export async function removePushSubscription(endpoint: string): Promise<ActionState> {
-  const { lang } = await getActionI18n();
-  await requireSuperAdmin();
-  const supabase = await createClient();
-  const { error } = await supabase.from("push_subscriptions").delete().eq("endpoint", String(endpoint).slice(0, 1000));
-  if (error) return { ok: false, message: userMessage(error, lang) };
-  return { ok: true };
-}
-
-/** A test alert to every browser you turned on. */
-export async function sendTestPush(): Promise<ActionState> {
-  const { t } = await getActionI18n();
-  const user = await requireSuperAdmin();
-  const { sent } = await sendPush([user.id], (lang) => ({
-    title: DICTS[lang].push.testTitle,
-    body: DICTS[lang].push.testBody,
-    url: localePath(lang, "/super"),
-    tag: "test",
-  }));
-  return sent ? { ok: true, message: t.push.testSent } : { ok: false, message: t.push.testFailed };
 }
 
 export async function savePlan(_prev: ActionState, formData: FormData): Promise<ActionState> {
