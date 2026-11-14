@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useId } from "react";
 import { initialActionState, type ActionState, type Field, type FieldValues } from "@/lib/fields";
 import { tx, type Lang } from "@/lib/i18n/config";
 import { useI18n } from "@/components/i18n/I18nProvider";
+import { useDialogClose } from "@/components/ui/FormDialog";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { Switch } from "@/components/ui/Switch";
 
@@ -13,6 +14,7 @@ type FormAction = (state: ActionState, formData: FormData) => Promise<ActionStat
  * Renders a list of Field definitions as a form bound to a Server Action.
  * After each submit the form remounts (key = nonce): on success with the
  * saved values (or empty for "add" forms), on error with what was typed.
+ * Inside a <FormDialog>, a successful save closes the dialog.
  */
 export function FieldsForm({
   action,
@@ -30,7 +32,12 @@ export function FieldsForm({
   columns?: 1 | 2;
 }) {
   const { lang } = useI18n();
-  const [state, formAction] = useActionState(action, initialActionState);
+  const closeDialog = useDialogClose();
+  const [state, formAction] = useActionState(async (prev: ActionState, formData: FormData) => {
+    const next = await action(prev, formData);
+    if (next.ok) closeDialog?.();
+    return next;
+  }, initialActionState);
   const echo = !state.ok && state.values ? state.values : null;
 
   return (
@@ -43,7 +50,7 @@ export function FieldsForm({
         ))}
       </div>
 
-      {state.message && (
+      {state.message && !(state.ok && closeDialog) && (
         <p role="status" className={state.ok ? "text-sm text-emerald-700" : "text-sm text-rose-700"}>
           {state.message}
         </p>
@@ -55,7 +62,7 @@ export function FieldsForm({
 
 function FieldInput({ field: f, lang, value, echoed }: { field: Field; lang: Lang; value: FieldValues[string]; echoed: boolean }) {
   const { t } = useI18n();
-  const id = `f-${f.name}`;
+  const id = useId();
   const str = value == null ? "" : String(value);
   const wide = f.type === "textarea" || f.type === "image";
   const label = tx(f.label, lang);

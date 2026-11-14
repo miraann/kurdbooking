@@ -1,3 +1,4 @@
+import { Pencil, Trash2 } from "lucide-react";
 import { canManage, requireShop } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { RESOURCES, type ResourceConfig, type ResourceKey } from "@/lib/resources";
@@ -8,8 +9,9 @@ import { getI18n, type I18n } from "@/lib/i18n/server";
 import { deleteResource, saveResource } from "@/app/[lang]/dashboard/actions";
 import { FieldsForm } from "@/components/forms/FieldsForm";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { AddTile, FormDialog } from "@/components/ui/FormDialog";
 
-/** List + add + edit + delete for one entry of lib/resources.ts. */
+/** Grid of cards for one entry of lib/resources.ts: an "add" tile first, then each row with edit (dialog) and delete. */
 export async function ResourceEditor({ resource }: { resource: ResourceKey }) {
   const cfg = RESOURCES[resource];
   const [{ shop, role }, i18n] = await Promise.all([requireShop(), getI18n()]);
@@ -28,66 +30,62 @@ export async function ResourceEditor({ resource }: { resource: ResourceKey }) {
   const save = saveResource.bind(null, resource);
 
   return (
-    <div className="space-y-4">
+    <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {editable && (
-        <details className="card group">
-          <summary className="cursor-pointer list-none font-semibold text-brand">＋ {cfg.addLabel[lang]}</summary>
-          <div className="mt-4">
+        <li>
+          <AddTile label={cfg.addLabel[lang]} hint={rows.length === 0 ? cfg.emptyText[lang] : undefined}>
             <FieldsForm action={save} fields={fields} submitLabel={t.common.add} />
-          </div>
-        </details>
+          </AddTile>
+        </li>
       )}
 
-      {rows.length === 0 ? (
-        <p className="card text-center text-sm text-slate-500">{cfg.emptyText[lang]}</p>
-      ) : (
-        <ul className="space-y-3">
-          {rows.map((row) => {
-            const image = cfg.imageField ? (row[cfg.imageField] as string | null) : null;
-            const title = cell(fields, cfg.titleField, row[cfg.titleField], i18n) || "—";
-            const subtitle = [
-              range(cfg, row, i18n),
-              ...(cfg.subtitleFields ?? []).map((name) => cell(fields, name, row[name], i18n)),
-            ]
-              .filter(Boolean)
-              .join(" · ");
-            const inactive = row.is_active === false;
-            return (
-              <li key={row.id} className={`card ${inactive ? "opacity-60" : ""}`}>
-                <div className="flex items-center gap-3">
-                  {image && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={image} alt="" className="size-14 shrink-0 rounded-xl object-cover" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold">{title}</p>
-                    {subtitle && <p className="truncate text-sm text-slate-500">{subtitle}</p>}
-                    {inactive && <p className="text-xs text-amber-700">{t.common.inactive}</p>}
-                  </div>
-                  {editable && (
-                    <ActionButton
-                      action={deleteResource.bind(null, resource, row.id)}
-                      confirmText={t.common.confirmDelete}
-                      className="btn-danger px-3 py-1.5"
-                    >
-                      {t.common.delete}
-                    </ActionButton>
-                  )}
-                </div>
-                {editable && (
-                  <details className="mt-3 border-t border-slate-100 pt-3">
-                    <summary className="cursor-pointer text-sm text-brand">{t.common.edit}</summary>
-                    <div className="mt-4">
-                      <FieldsForm action={save} fields={fields} defaults={row} hidden={{ id: row.id }} submitLabel={t.common.save} />
-                    </div>
-                  </details>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+      {!editable && rows.length === 0 && (
+        <li className="card text-center text-sm text-slate-500 sm:col-span-2 lg:col-span-3">{cfg.emptyText[lang]}</li>
       )}
-    </div>
+
+      {rows.map((row) => {
+        const image = cfg.imageField ? (row[cfg.imageField] as string | null) : null;
+        const title = cell(fields, cfg.titleField, row[cfg.titleField], i18n) || "—";
+        const subtitle = [
+          range(cfg, row, i18n),
+          ...(cfg.subtitleFields ?? []).map((name) => cell(fields, name, row[name], i18n)),
+        ]
+          .filter(Boolean)
+          .join(" · ");
+        const inactive = row.is_active === false;
+        return (
+          <li key={row.id} className={`card flex flex-col gap-3 ${inactive ? "opacity-60" : ""}`}>
+            {image && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={image} alt="" className="aspect-video w-full rounded-2xl object-cover" />
+            )}
+            <div className="min-w-0">
+              <p className="truncate font-semibold">{title}</p>
+              {subtitle && <p className="truncate text-sm text-slate-500">{subtitle}</p>}
+              {inactive && <p className="text-xs text-amber-700">{t.common.inactive}</p>}
+            </div>
+            {editable && (
+              <div className="mt-auto flex items-start gap-2 border-t border-slate-100 pt-3">
+                <FormDialog
+                  title={`${t.common.edit} · ${title}`}
+                  triggerClassName="btn-tonal min-h-10 flex-1 py-2"
+                  trigger={<><Pencil className="size-4" /> {t.common.edit}</>}
+                >
+                  <FieldsForm action={save} fields={fields} defaults={row} hidden={{ id: row.id }} submitLabel={t.common.save} />
+                </FormDialog>
+                <ActionButton
+                  action={deleteResource.bind(null, resource, row.id)}
+                  confirmText={t.common.confirmDelete}
+                  className="btn-danger min-h-10 px-3 py-2"
+                >
+                  <Trash2 className="size-4" /><span className="sr-only">{t.common.delete}</span>
+                </ActionButton>
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

@@ -79,6 +79,10 @@
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
   }
+  /* The page behind an open <FormDialog> doesn't scroll. */
+  html:has(dialog[open]:modal) {
+    overflow: hidden;
+  }
   body {
     background: var(--color-surface);
     color: var(--color-slate-900);
