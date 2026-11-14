@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The customer pages' white header. Used behind the status and navigation bars and on
+         the launch screen, so the app never flashes another colour. -->
+    <color name="kb_surface">#FFFFFF</color>
+</resources>

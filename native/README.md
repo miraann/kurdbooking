@@ -1,6 +1,12 @@
 # Native apps
 
-Both apps are thin native shells around the live owner dashboard (`<site>/dashboard`), like zhewar's admin APK. Deploy the website first; the apps load it.
+Three thin native shells around the live website. Deploy the website first; the apps load it, so a web deploy updates them with no new build.
+
+| App | Folder | Opens | Id |
+|---|---|---|---|
+| Owner app (Android + iOS) | `native/mobile` | `<site>/dashboard` | `com.kurdbooking.owner` |
+| Owner app (Windows) | `native/windows` | `<site>/dashboard` | |
+| Customer app (Android) | `native/customer` | `<site>/` (the shop list) | `com.kurdbooking.app` |
 
 The app icon comes from `native/icon.svg`. It is a placeholder in zhewar's indigo → violet. Replace it with the final logo.
 
@@ -106,6 +112,34 @@ Put a 1024×1024 `assets/icon.png` (and optionally `assets/splash.png`) in `nati
 
 - **Android: done.** FCM through Firebase project `kurdbooking`. `google-services.json` is in `android/app/`, and Vercel needs `FIREBASE_SERVICE_ACCOUNT`. The site side is `components/push/native.ts` (asks for permission, saves the token) and `lib/push.ts` (sends). The app asks for permission on first open.
 - **iOS: not yet.** It needs an Apple Developer account, an APNs key uploaded to Firebase, and `GoogleService-Info.plist` in `ios/App/App/`.
+
+## Customer app (Android, Capacitor 8): `native/customer`
+
+Opens the shop list. Customers browse freely and create a profile (name, phone, password) when they book; `/account` shows their bookings. It is the owner app's shell (`MainActivity.java`: page clear of the system bars, back key, cookie flush) with a white background, a blue → red adaptive icon and no push yet.
+
+```bash
+cd native/customer
+```
+
+```bash
+npm install
+```
+
+```bash
+$env:KB_APP_URL = "https://YOUR-SITE"; npx cap sync android
+```
+
+Then in `native/customer/android`, with `JAVA_HOME` set to JDK 21:
+
+```bash
+.\gradlew.bat assembleDebug assembleRelease
+```
+
+Release builds are signed with the **same upload key** as the owner app: `android/keystore.properties` (git-ignored) holds the same passwords with `storeFile=../../mobile/android/keystore/kurdbooking-upload.jks`. Copy it from the owner app's file and change that line.
+
+**Publishing a new APK:** copy `app/build/outputs/apk/release/app-release.apk` to `public/kurdbooking.apk` and deploy. The site serves it at `<site>/kurdbooking.apk` and shows a download link in the footer of the customer pages (browsers only, not iPhones, not inside the app). Raise `versionCode` and `versionName` in `android/app/build.gradle` first, or phones won't install it over the old one.
+
+Still to do: its own final icon (Android 7 still uses the owner app's indigo `mipmap-*` PNGs), push for booking status, an iOS project, a store listing.
 
 ## Windows (Tauri 2): `native/windows`
 

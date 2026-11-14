@@ -8,9 +8,12 @@
 // 2. Shop subdomains:  ali.kurdbooking.com/ar/book  →  /ar/s/ali/book  (rewrite)
 //    Only when NEXT_PUBLIC_ROOT_DOMAIN is set. Without it, shops live at
 //    /s/<slug> on the main site and nothing is rewritten.
-// 3. Owner/admin areas (/dashboard, /super, /login, /reset-password): refreshes the Supabase
-//    session cookie, and sends logged-out visitors to their login: /login for
-//    shops, /super/login for the super admin (two separate logins).
+// 3. Pages that read the login (/dashboard, /super, /login, /reset-password,
+//    and the customer's /account and booking page): refreshes the Supabase
+//    session cookie (Server Components can't write it). Logged-out visitors of
+//    /dashboard and /super go to their login: /login for shops, /super/login
+//    for the super admin (two separate logins). Customers need a profile only
+//    to book; the booking page asks for it itself.
 //
 // Pages still check the user themselves (lib/auth.ts); this is not the only
 // guard. See the Next.js 16 proxy docs: node_modules/next/dist/docs.
@@ -35,8 +38,10 @@ function shopSlugFromHost(host: string): string | null {
 const PROTECTED = ["/dashboard", "/super"];
 const SUPER_LOGIN = "/super/login";
 // /reset-password: the reset link's session must stay fresh (no redirect there).
-const NEEDS_SESSION = [...PROTECTED, "/login", "/reset-password"];
+const NEEDS_SESSION = [...PROTECTED, "/login", "/reset-password", "/account"];
 const under = (path: string, list: string[]) => list.some((p) => path === p || path.startsWith(`${p}/`));
+/** The booking page: /s/<slug>/book on the main site, /book on a shop subdomain. */
+const isBookPage = (path: string, onSubdomain: boolean) => (onSubdomain ? path === "/book" : /^\/s\/[^/]+\/book$/.test(path));
 
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
@@ -85,8 +90,9 @@ export async function proxy(request: NextRequest) {
     return NextResponse.rewrite(url, { request: { headers } });
   };
 
-  // ── 3. Session for owner/admin areas ─────────────────────────────────────
-  if (slug || !under(path, NEEDS_SESSION)) return forward();
+  // ── 3. Session refresh ───────────────────────────────────────────────────
+  const needsSession = isBookPage(path, !!slug) || (!slug && under(path, NEEDS_SESSION));
+  if (!needsSession) return forward();
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -125,6 +131,7 @@ export const config = {
   matcher: [
     // Everything except Next internals and static files.
     // sw.js (push alerts) must stay at the site root, not under a language.
-    "/((?!_next/static|_next/image|favicon\\.ico|sw\\.js|font/|icons/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|otf|txt|xml|json|webmanifest)$).*)",
+    // .apk: the customer Android app download (public/kurdbooking.apk).
+    "/((?!_next/static|_next/image|favicon\\.ico|sw\\.js|font/|icons/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|otf|txt|xml|json|webmanifest|apk)$).*)",
   ],
 };

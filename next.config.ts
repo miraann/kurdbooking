@@ -25,6 +25,21 @@ const nextConfig: NextConfig = {
     },
   },
 
+  // Old addresses. The shop list is now the home page, the sales pages are
+  // gone (no public prices), and a customer's bookings live in /account.
+  // Kurdish has no prefix; /ckb/… is sent to the clean URL by proxy.ts first.
+  async redirects() {
+    const moved = [
+      { from: "/shops", to: "/" },
+      { from: "/pricing", to: "/" },
+      { from: "/s/:shop/my-bookings", to: "/account" },
+    ];
+    return moved.flatMap(({ from, to }) => [
+      { source: from, destination: to, permanent: false },
+      { source: `/:lang(ar|en)${from}`, destination: `/:lang${to === "/" ? "" : to}`, permanent: false },
+    ]);
+  },
+
   async headers() {
     return [
       {
@@ -33,6 +48,15 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
           { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+      {
+        // The customer Android app (native/customer). Always the newest build.
+        source: "/kurdbooking.apk",
+        headers: [
+          { key: "Content-Type", value: "application/vnd.android.package-archive" },
+          { key: "Content-Disposition", value: 'attachment; filename="KurdBooking.apk"' },
+          { key: "Cache-Control", value: "no-cache" },
         ],
       },
       {

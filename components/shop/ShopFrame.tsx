@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarPlus } from "lucide-react";
+import { CalendarPlus, UserRound } from "lucide-react";
 import { getPublicShop, getShopContent, isValidSlug } from "@/lib/shop-data";
-import { shopBasePath } from "@/lib/tenant";
+import { mainSiteLink, shopBasePath } from "@/lib/tenant";
 import { env } from "@/lib/env";
 import { getI18n } from "@/lib/i18n/server";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
@@ -31,6 +31,8 @@ export async function ShopFrame({ params, children }: { params: Promise<{ shop: 
   }
 
   const [{ profile }, base] = await Promise.all([getShopContent(shop.id), shopBasePath(slug)]);
+  // On the shop's own subdomain (base ""), the shop list and /account live on the main site.
+  const main = (path: string) => mainSiteLink(base, href(path));
   const style = {
     "--shop-primary": profile?.primary_color ?? "#2563eb",
     "--shop-accent": profile?.accent_color ?? "#ef4444",
@@ -52,8 +54,13 @@ export async function ShopFrame({ params, children }: { params: Promise<{ shop: 
           <nav className="ms-auto flex items-center gap-1 text-sm">
             {/* max-sm:hidden, not "hidden sm:inline-flex": the switcher's own inline-flex comes after hidden in the CSS. */}
             <LanguageSwitcher className="max-sm:hidden" />
-            <Link href={href(`${base}/my-bookings`)} className="rounded-full px-3 py-2 font-medium text-neutral-500 hover:text-neutral-900">
-              {t.shop.myBookings}
+            {/* The customer's profile and bookings live on the main site. */}
+            <Link
+              href={main("/account")}
+              className="flex items-center gap-1.5 rounded-full px-3 py-2 font-medium text-neutral-500 hover:text-neutral-900"
+            >
+              <UserRound className="size-4" aria-hidden />
+              <span className="max-sm:sr-only">{t.account.link}</span>
             </Link>
             <Link
               href={href(`${base}/book`)}
@@ -69,8 +76,7 @@ export async function ShopFrame({ params, children }: { params: Promise<{ shop: 
       <footer className="mt-20 flex flex-col items-center gap-3 border-t border-neutral-200/70 py-6 text-center text-xs text-neutral-400">
         {/* Phones: the language picker sits here, the header has no room. */}
         <LanguageSwitcher className="sm:hidden" />
-        {/* On the shop's own subdomain, /shops lives on the main site. */}
-        <Link href={base ? href("/shops") : `${env.siteUrl()}${href("/shops")}`} className="font-medium text-neutral-500 hover:text-neutral-900">
+        <Link href={main("/")} className="font-medium text-neutral-500 hover:text-neutral-900">
           {t.shops.allShops}
         </Link>
         <a href={env.siteUrl()} className="hover:text-neutral-600" dir="ltr">KurdBooking</a>

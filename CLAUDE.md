@@ -8,14 +8,18 @@ but its look and its tested features are the reference.
 
 Every page lives under `app/[lang]/` (see **Languages** below), so the folders are:
 
-- **Side 1, seller platform:** landing, `/pricing` and `/signup` in `app/[lang]/(platform)`. The owner of the platform uses `/super` (`app/[lang]/super`).
+- **Side 1, seller platform:** `/signup`, `/login` and the password pages in `app/[lang]/(platform)`. There are **no public sales pages and no public prices**: the home page is the customer shop list, and `/shops` and `/pricing` redirect to it (`next.config.ts`). Owners reach `/signup` and `/login` by direct link. The owner of the platform uses `/super` (`app/[lang]/super`).
   - `/signup` is only an order form: it saves a row in `shop_requests`, no account and no shop. **Only the super admin creates shops**, in `/super/shops/new` (or from an order in `/super/requests`).
-  - **Two separate logins:** `/login` is for shop owners and staff, `/super/login` is for the super admin. Each refuses the other kind of account (`signIn()` in `app/[lang]/(platform)/auth-actions.ts`). `/super` pages live in `app/[lang]/super/(panel)/` so that `/super/login` is outside the admin check.
+  - **Two separate logins:** `/login` is for shop owners and staff, `/super/login` is for the super admin. Each refuses the other kind of account, and both refuse customer profiles (`signIn()` in `app/[lang]/(platform)/auth-actions.ts`). `/super` pages live in `app/[lang]/super/(panel)/` so that `/super/login` is outside the admin check.
   - New orders send a browser push to the super admin (`lib/push.ts`, `public/sw.js`).
 - **Side 2, each shop:**
   - The owner dashboard is `/dashboard` (`app/[lang]/dashboard`). The Android, iOS and Windows apps open this page.
   - The public shop page is `/s/<slug>` (`app/[lang]/s/[shop]`). Once a domain is set it is also `<slug>.<root-domain>`, through `proxy.ts`.
-- **Customer side:** `/shops` (`app/[lang]/shops`) lists every live shop that is listed (`listed_shops()`, cached under `LISTED_SHOPS_TAG`), with a type filter and search. The customer app opens here, then `/s/<slug>`.
+- **Customer side** (`app/[lang]/(customer)`):
+  - The home page `/` lists every live shop that is listed (`listed_shops()`, cached under `LISTED_SHOPS_TAG`), with a type filter and search. Browsing needs no account.
+  - **Booking needs a customer profile:** name + phone + password. The booking page's last step signs up or logs in in place, keeping the chosen time. `/account` is the profile: bookings in every shop with their status (`my_appointments()`), cancel, log out.
+  - Customer profiles are Supabase Auth users with a stand-in email `<phone>@phone.invalid` and `app_metadata = { kind: "customer", phone }` (`lib/customer.ts`). `getViewer()` tells guest / customer / staff. The phone is **not verified yet** (a WhatsApp code is planned).
+  - The customer Android app (`native/customer`, `com.kurdbooking.app`) opens `/`. Its APK is served at `/kurdbooking.apk` (`public/`).
 
 Setup and commands are in `README.md`. What is built and what is next is in `docs/ROADMAP.md`.
 
@@ -42,7 +46,7 @@ Setup and commands are in `README.md`. What is built and what is next is in `doc
 ## Data and security rules
 
 - Every shop table has `shop_id`. **Every query filters by `shop_id`**, even though RLS also enforces it.
-- **Logged-in code goes through `lib/auth.ts`:** `requireShop()`, `requireSuperAdmin()`, `requireUser()`. Every Server Action calls one of them first. Never trust a shop id sent by the browser.
+- **Logged-in code goes through `lib/auth.ts`:** `requireShop()`, `requireSuperAdmin()`, `requireUser()`. Every Server Action calls one of them first (customer actions use `getViewer()` from `lib/customer.ts`). Never trust a shop id sent by the browser, and never a customer's name or phone: bookings take them from the session.
 - **Pick the right Supabase client:**
   - `lib/supabase/server.ts` acts as the user, so RLS applies. Use it by default.
   - `lib/supabase/public.ts` has no cookies, for `'use cache'` reads of public content.
@@ -73,7 +77,7 @@ The tokens and building blocks live in `app/globals.css` as Tailwind `@utility` 
 - the floating pill tab bar on phones
 - `.text-brand-gradient` for the keyword in a heading
 
-**The customer side** (`/shops`, the public shop page, booking, my bookings, receipt) follows zhewar's home page, in red and blue.
+**The customer side** (the `/` shop list, `/account`, the public shop page, booking, receipt) follows zhewar's home page, in red and blue.
 Use the pieces in `components/shop/theme.tsx` (`ShopStrip`, `LogoRing`, `Divider`, `Heading`) and the `card-shop` / `input-shop` / `btn-shop` / `btn-shop-accent` utilities, never the indigo `card` / `input` / `btn-primary`:
 - white background with `neutral-900` headings
 - faint drifting red/blue diagonal stripes behind the page (`<StripeBackground>`)

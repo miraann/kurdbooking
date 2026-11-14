@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { getPublicShop } from "@/lib/shop-data";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { shopBasePath } from "@/lib/tenant";
+import { mainSiteLink, shopBasePath } from "@/lib/tenant";
 import { fill } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { APPOINTMENT_STATUS } from "@/lib/labels";
@@ -167,7 +167,7 @@ export default async function ReceiptPage({ params, searchParams }: PageProps<"/
             <CalendarPlus className="size-5" aria-hidden /> {t.shop.bookNow}
           </Link>
         )}
-        <Link href={href(`${base}/my-bookings`)} className="btn-shop-accent w-full">
+        <Link href={mainSiteLink(base, href("/account"))} className="btn-shop-accent w-full">
           <RotateCcw className="size-4" aria-hidden /> {t.shop.checkBookings}
         </Link>
         <Link href={href(base || "/")} className="btn-ghost w-full border-2 py-3.5 text-base">

@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createPublicClient } from "@/lib/supabase/public";
 import { getProfile, getRecoveryUser, requireUser } from "@/lib/auth";
 import { siteUrl } from "@/lib/env";
+import { isCustomerEmail, isCustomerMeta } from "@/lib/customer";
 import { allowAttempt } from "@/lib/rate-limit";
 import { displayPhone, fill, normalizePhone } from "@/lib/format";
 import { notifySuperAdmins } from "@/lib/push";
@@ -114,6 +115,11 @@ async function signIn(kind: LoginKind, formData: FormData): Promise<ActionState>
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
   if (error || !data.user) return fail(t.login.wrong);
+  // Customer profiles log in on the customer side (/account), not here.
+  if (isCustomerMeta(data.user.app_metadata)) {
+    await supabase.auth.signOut({ scope: "local" });
+    return fail(t.login.customerAccount);
+  }
 
   const { data: profile } = await supabase.from("profiles").select("is_super_admin").eq("id", data.user.id).maybeSingle();
   const isSuper = !!profile?.is_super_admin;
@@ -176,6 +182,8 @@ export async function requestPasswordReset(_prev: ActionState, formData: FormDat
   const parsed = z.string().email().safeParse(email);
   if (!parsed.success) return { ok: false, message: t.login.invalidEmail, values, nonce: Date.now() };
   if (!(await allowAttempt("passwordEmail"))) return { ok: false, message: t.errors.tooFast, values, nonce: Date.now() };
+  // A customer profile's stand-in address can't receive mail (lib/customer.ts): same answer, nothing sent.
+  if (isCustomerEmail(parsed.data)) return { ok: true, message: t.password.sent, values, nonce: Date.now() };
 
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {

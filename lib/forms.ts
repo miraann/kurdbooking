@@ -56,7 +56,7 @@ export const PLAN_FIELDS: Field[] = [
   { name: "max_staff", label: { ckb: "زۆرترین کارمەند", ar: "أقصى عدد للموظفين", en: "Max staff" }, type: "number", min: 1, help: UNLIMITED_HELP },
   { name: "max_gallery_photos", label: { ckb: "زۆرترین وێنەی گالەری", ar: "أقصى عدد لصور المعرض", en: "Max gallery photos" }, type: "number", min: 1, help: UNLIMITED_HELP },
   { name: "max_locations", label: { ckb: "زۆرترین لق", ar: "أقصى عدد للفروع", en: "Max branches" }, type: "number", min: 1, help: UNLIMITED_HELP },
-  { name: "is_public", label: { ckb: "لە لاپەڕەی نرخەکان پیشان بدرێت", ar: "إظهارها في صفحة الأسعار", en: "Show on the pricing page" }, type: "checkbox", defaultChecked: true },
+  { name: "is_public", label: { ckb: "بۆ دوکانەکان پیشان بدرێت (بەشداریکردن)", ar: "إظهارها للمحلات (الاشتراك)", en: "Show to shops (subscription page)" }, type: "checkbox", defaultChecked: true },
   { name: "sort_order", label: { ckb: "ڕیزبەندی", ar: "الترتيب", en: "Order" }, type: "number", min: 0, emptyValue: 0 },
 ];
 

@@ -72,32 +72,8 @@ const en: Dict = {
 
   platform: {
     findShop: "Find a shop",
-    pricing: "Pricing",
     login: "Log in",
     start: "Get started",
-  },
-
-  landing: {
-    titleBefore: "",
-    titleKey: "Booking",
-    titleAfter: " system",
-    titleLine2: "for barbershops and women's salons",
-    subtitle: "A page of your own: your customers book online, see your work and reach you easily.",
-    cta: "Order the system",
-    features: [
-      { title: "Online booking", text: "Customers pick a service, a staff member and a time. No two people can book the same time." },
-      { title: "Your work gallery", text: "Show customers your best work." },
-      { title: "Social media posts", text: "Your Instagram, Facebook and TikTok posts in one place." },
-      { title: "Contact and location", text: "Phone, WhatsApp, map and all your branches." },
-      { title: "Android, iOS and Windows", text: "An app for the shop owner, with notifications." },
-      { title: "Try before you buy", text: "Try it free for a few days, then decide." },
-    ],
-  },
-
-  pricing: {
-    title: "Pricing",
-    subtitle: "Every plan starts with a free trial.",
-    empty: "Prices will be announced soon. Contact us for details.",
   },
 
   login: {
@@ -112,6 +88,7 @@ const en: Dict = {
     notAdmin: "This account is not a super admin account.",
     adminAccount: "This is the super admin account. Log in from the admin login page.",
     wrong: "Wrong email or password",
+    customerAccount: "This is a customer profile. Customers log in with their mobile number from the home page.",
   },
 
   password: {
@@ -287,7 +264,6 @@ const en: Dict = {
 
   shop: {
     closed: "This page isn't available right now.",
-    myBookings: "My bookings",
     book: "Book",
     bookNow: "Book now",
     bookHint: "Tap to see available times",
@@ -316,15 +292,13 @@ const en: Dict = {
     dayTime: "Day and time",
     noSlots: "No free times on this day. Choose another day.",
     yourDetails: "Your details",
-    fullName: "Full name",
+    bookingAs: "Booking as",
+    needProfile: "You need a profile to book. Create one or log in; the time you picked stays selected.",
     note: "Note (optional)",
     book: "Book this time",
     request: "Send request",
     errors: {
-      name: "Please enter your name",
-      nameLong: "The name is too long",
-      phone: "Please enter your mobile number",
-      phoneInvalid: "The phone number isn't valid",
+      loginRequired: "Create a profile or log in first to book.",
       shopClosed: "This shop isn't taking bookings right now",
       bookingOff: "Online booking is closed right now",
       noService: "This service isn't available",
@@ -355,9 +329,41 @@ const en: Dict = {
     cancelledHelp: "You can book a new time.",
   },
 
-  myBookings: {
-    subtitle: "Bookings made on this device",
-    none: "You haven't booked anything on this device.",
+  account: {
+    metaTitle: "Profile",
+    link: "Profile",
+    title: "My profile",
+    guestTitle: "Create a profile",
+    guestText: "With a profile you book appointments and see the status of all your bookings here. Just your name, mobile number and a password.",
+    signupTab: "New profile",
+    loginTab: "I have a profile",
+    name: "Full name",
+    phone: "Mobile number",
+    password: "Password",
+    passwordHelp: "At least 6 letters or digits",
+    signup: "Create profile",
+    login: "Log in",
+    logout: "Log out",
+    myBookings: "My bookings",
+    upcoming: "Upcoming",
+    history: "Past bookings",
+    noBookings: "You haven't booked anything yet.",
+    findShop: "Choose a shop",
+    cancel: "Cancel",
+    confirmCancel: "Cancel this appointment?",
+    staffAccount: "You're logged in with a shop account. To book as a customer, log out first and create a customer profile.",
+    toDashboard: "Go to the dashboard",
+    errors: {
+      name: "Please enter your name",
+      nameLong: "The name is too long",
+      phone: "The mobile number isn't valid",
+      password: "The password must be at least 6 characters",
+      passwordLong: "The password is too long",
+      exists: "This number already has a profile. Log in under «I have a profile».",
+      wrong: "Wrong mobile number or password",
+      failed: "Creating the profile failed. Please try again.",
+      cancelFailed: "This appointment can't be cancelled.",
+    },
   },
 
   shops: {
@@ -375,6 +381,7 @@ const en: Dict = {
     isNew: "New",
     view: "View & book",
     allShops: "All shops",
+    androidApp: "Download the Android app",
   },
 
   push: {
@@ -396,6 +403,7 @@ const en: Dict = {
     newBookingPending: "New booking · waiting",
     newBookingConfirmed: "New booking",
     newBookingBody: "{name} · {service} · {date} {time}",
+    bookingCancelled: "Appointment cancelled",
     newOrderTitle: "New order",
     newOrderBody: "{shop} · {owner} · {phone}",
   },
@@ -411,7 +419,7 @@ const en: Dict = {
       newRequests: "New orders",
     },
     plans: {
-      help: "Public plans appear on the pricing page and in shops' subscription page. Private plans are only visible here.",
+      help: "Public plans appear on the subscription page of shop dashboards. Private plans are only visible here.",
       newPlan: "New plan",
       empty: "No plans created yet.",
       private: "(private)",

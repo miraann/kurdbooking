@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { CalendarPlus, ExternalLink, MapPin, Search, Share2 } from "lucide-react";
 import { getPublicShop, getShopContent, getShopReviews, isValidSlug } from "@/lib/shop-data";
-import { shopBasePath } from "@/lib/tenant";
+import { mainSiteLink, shopBasePath } from "@/lib/tenant";
 import { displayPhone, fill, whatsappLink } from "@/lib/format";
 import type { SocialPlatform } from "@/lib/types";
 import { getI18n } from "@/lib/i18n/server";
@@ -80,7 +80,7 @@ export default async function ShopHome({ params }: PageProps<"/[lang]/s/[shop]">
             </Link>
           )}
           <p className="text-[0.7rem] tracking-wide text-neutral-400">{s.bookHint}</p>
-          <Link href={href(`${base}/my-bookings`)} className="btn-shop-accent w-full">
+          <Link href={mainSiteLink(base, href("/account"))} className="btn-shop-accent w-full">
             <Search className="size-4" aria-hidden /> {s.checkBookings}
           </Link>
 

@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, CalendarDays, Check, Clock, Loader2, Scissors } from "lucide-react";
+import { AlertCircle, CalendarDays, Check, Clock, Loader2, LogOut, Scissors, UserRound } from "lucide-react";
 import { addDays, dayOfWeek } from "@/lib/booking";
-
-import { bookingsKey, type SavedBooking } from "@/lib/saved-bookings";
+import { displayPhone } from "@/lib/format";
+import type { Viewer } from "@/lib/customer";
 import { useI18n } from "@/components/i18n/I18nProvider";
+import { CustomerAuth } from "@/app/[lang]/(customer)/account/CustomerAuth";
+import { customerLogout } from "@/app/[lang]/(customer)/account/actions";
 import { bookAppointment } from "./actions";
 
 interface ServiceOption { id: string; name: string; duration_minutes: number; price_iqd: number | null }
@@ -15,6 +17,7 @@ interface StaffOption { id: string; name: string; title: string | null; photo_ur
 export function BookingForm(props: {
   slug: string;
   base: string;
+  viewer: Viewer;
   today: string;
   maxDaysAhead: number;
   autoConfirm: boolean;
@@ -48,7 +51,9 @@ export function BookingForm(props: {
     [props.today, props.maxDaysAhead],
   );
 
-  // Load free times whenever service / staff / day change.
+  // Load free times whenever service / staff / day change. The choice buttons
+  // clear `slots` only when the choice really changes: re-tapping the current
+  // one would leave the list loading forever (this effect wouldn't run again).
   useEffect(() => {
     if (!serviceId) return;
     const controller = new AbortController();
@@ -68,8 +73,6 @@ export function BookingForm(props: {
         staffId,
         date,
         time,
-        name: String(formData.get("name") ?? ""),
-        phone: String(formData.get("phone") ?? ""),
         note: String(formData.get("note") ?? ""),
       });
       if (!result.ok) {
@@ -81,13 +84,7 @@ export function BookingForm(props: {
         }
         return;
       }
-      try {
-        const saved: SavedBooking[] = JSON.parse(localStorage.getItem(bookingsKey(props.slug)) ?? "[]");
-        saved.unshift({ id: result.id, token: result.token, when: `${f.date(date)} · ${f.time(time)}`, service: service?.name ?? "" });
-        localStorage.setItem(bookingsKey(props.slug), JSON.stringify(saved.slice(0, 20)));
-      } catch {
-        // private mode / storage blocked: the receipt link still works
-      }
+      // The booking is also listed in the customer's profile (/account).
       router.push(href(`${props.base}/appointment/${result.id}?t=${result.token}`));
     });
   }
@@ -101,7 +98,7 @@ export function BookingForm(props: {
             <Choice
               key={s.id}
               selected={s.id === serviceId}
-              onClick={() => { setServiceId(s.id); setStaffId("any"); setTime(""); setSlots(null); }}
+              onClick={() => { if (s.id === serviceId) return; setServiceId(s.id); setStaffId("any"); setTime(""); setSlots(null); }}
             >
               <span className="font-semibold">{s.name}</span>
               <span className="text-xs text-neutral-500">
@@ -116,11 +113,11 @@ export function BookingForm(props: {
       {service && staffForService.length > 1 && (
         <Step n={f.num(2)} title={b.who}>
           <div className="flex flex-wrap gap-2">
-            <Choice selected={staffId === "any"} onClick={() => { setStaffId("any"); setTime(""); setSlots(null); }}>
+            <Choice selected={staffId === "any"} onClick={() => { if (staffId === "any") return; setStaffId("any"); setTime(""); setSlots(null); }}>
               <span className="font-semibold">{b.anyone}</span>
             </Choice>
             {staffForService.map((m) => (
-              <Choice key={m.id} selected={staffId === m.id} onClick={() => { setStaffId(m.id); setTime(""); setSlots(null); }}>
+              <Choice key={m.id} selected={staffId === m.id} onClick={() => { if (staffId === m.id) return; setStaffId(m.id); setTime(""); setSlots(null); }}>
                 <span className="font-semibold">{m.name}</span>
                 {m.title && <span className="text-xs text-neutral-500">{m.title}</span>}
               </Choice>
@@ -141,7 +138,7 @@ export function BookingForm(props: {
                   key={d}
                   type="button"
                   aria-pressed={on}
-                  onClick={() => { setDate(d); setTime(""); setSlots(null); }}
+                  onClick={() => { if (d === date) return; setDate(d); setTime(""); setSlots(null); }}
                   className={`flex w-16 shrink-0 snap-start touch-manipulation flex-col items-center gap-0.5 rounded-2xl border py-3 transition active:scale-95 ${
                     on ? "border-transparent text-white shadow-md" : isToday ? "bg-white" : "border-neutral-200 bg-white text-neutral-600 shadow-sm"
                   }`}
@@ -191,24 +188,53 @@ export function BookingForm(props: {
         </Step>
       )}
 
-      {/* 4. Details */}
+      {/* 4. Details: book as the logged-in customer, or make a profile first.
+          Signing up / logging in re-renders this page with the customer, and
+          the choices above stay as they are. */}
       {service && time && (
         <Step n={f.num(staffForService.length > 1 ? 4 : 3)} title={b.yourDetails}>
-          <form action={submit} className="space-y-3">
-            <ul className="grid gap-2 rounded-2xl border border-neutral-100 bg-neutral-50 p-3 text-sm sm:grid-cols-3">
-              <SummaryItem icon={<Scissors className="size-4" />} text={service.name} />
-              <SummaryItem icon={<CalendarDays className="size-4" />} text={f.date(date)} />
-              <SummaryItem icon={<Clock className="size-4" />} text={f.time(time)} />
-            </ul>
-            <input name="name" required minLength={2} maxLength={80} placeholder={b.fullName} className="input-shop" autoComplete="name" />
-            <input name="phone" type="tel" dir="ltr" required placeholder="07XX XXX XXXX" className="input-shop" autoComplete="tel" />
-            <textarea name="note" maxLength={500} rows={2} placeholder={b.note} className="input-shop h-auto py-3.5" />
-            {error && <ErrorBox message={error} />}
-            <button type="submit" disabled={pending} className="btn-shop w-full">
-              {pending ? <Loader2 className="size-5 animate-spin" /> : <Check className="size-5" />}
-              {props.autoConfirm ? b.book : b.request}
-            </button>
-          </form>
+          <ul className="grid gap-2 rounded-2xl border border-neutral-100 bg-neutral-50 p-3 text-sm sm:grid-cols-3">
+            <SummaryItem icon={<Scissors className="size-4" />} text={service.name} />
+            <SummaryItem icon={<CalendarDays className="size-4" />} text={f.date(date)} />
+            <SummaryItem icon={<Clock className="size-4" />} text={f.time(time)} />
+          </ul>
+          {props.viewer.kind === "customer" ? (
+            <form action={submit} className="space-y-3">
+              <div className="flex items-center gap-3 rounded-2xl border border-neutral-100 bg-white p-3">
+                <span
+                  className="grid size-10 shrink-0 place-items-center rounded-full"
+                  style={{ color: "var(--shop-primary)", background: "color-mix(in srgb, var(--shop-primary) 10%, white)" }}
+                >
+                  <UserRound className="size-5" aria-hidden />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-neutral-400">{b.bookingAs}</p>
+                  <p className="truncate font-bold text-neutral-900">{props.viewer.customer.name}</p>
+                </div>
+                <span className="shrink-0 text-sm text-neutral-500" dir="ltr">{displayPhone(props.viewer.customer.phone)}</span>
+              </div>
+              <textarea name="note" maxLength={500} rows={2} placeholder={b.note} className="input-shop h-auto py-3.5" />
+              {error && <ErrorBox message={error} />}
+              <button type="submit" disabled={pending} className="btn-shop w-full">
+                {pending ? <Loader2 className="size-5 animate-spin" /> : <Check className="size-5" />}
+                {props.autoConfirm ? b.book : b.request}
+              </button>
+            </form>
+          ) : props.viewer.kind === "staff" ? (
+            <div className="space-y-3 text-center">
+              <p className="text-sm text-neutral-600">{t.account.staffAccount}</p>
+              <form action={customerLogout}>
+                <button type="submit" className="btn-shop-accent w-full">
+                  <LogOut className="size-4 ltr:rotate-180" aria-hidden /> {t.account.logout}
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm font-medium leading-relaxed text-neutral-600">{b.needProfile}</p>
+              <CustomerAuth />
+            </div>
+          )}
         </Step>
       )}
       {error && !time && <ErrorBox message={error} />}

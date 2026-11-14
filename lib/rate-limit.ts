@@ -12,7 +12,8 @@ import { env } from "@/lib/env";
 export const LIMITS = {
   booking: { max: 8, windowSeconds: 10 * 60 }, // per IP
   shopRequest: { max: 5, windowSeconds: 60 * 60 }, // /signup orders, per IP
-  login: { max: 10, windowSeconds: 10 * 60 }, // both logins, per IP
+  login: { max: 10, windowSeconds: 10 * 60 }, // all logins (owner, super, customer), per IP
+  customerSignup: { max: 10, windowSeconds: 60 * 60 }, // new customer profiles, per IP
   passwordEmail: { max: 5, windowSeconds: 60 * 60 }, // /forgot-password, per IP
   passwordChange: { max: 5, windowSeconds: 10 * 60 }, // Settings, per account
 } as const;

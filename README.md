@@ -49,7 +49,8 @@ npm run dev
 
 | URL | What |
 |---|---|
-| http://localhost:3000 | Platform landing |
+| http://localhost:3000 | Customer home: the list of shops (no sales pages, no public prices) |
+| http://localhost:3000/account | Customer profile: sign up / log in with phone + password, bookings in every shop |
 | http://localhost:3000/signup | Order form: saves a request only. Shops are created by the super admin in `/super/shops/new` (or from `/super/requests`) |
 | http://localhost:3000/login | Shop login (owners and staff only) |
 | http://localhost:3000/dashboard | Owner dashboard |

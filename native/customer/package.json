@@ -1,0 +1,17 @@
+{
+  "name": "kurdbooking-customer-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Android app for customers. Opens the live shop list (/); a profile is needed only to book.",
+  "scripts": {
+    "sync": "cap sync",
+    "android": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/core": "^8.6.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.6.0"
+  }
+}

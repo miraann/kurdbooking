@@ -43,6 +43,7 @@ next-env.d.ts
 
 # native builds
 /native/mobile/node_modules
+/native/customer/node_modules
 /native/windows/node_modules
 /native/windows/src-tauri/target
 /native/windows/src-tauri/gen

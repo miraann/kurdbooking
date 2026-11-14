@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { getPublicShop, getShopContent } from "@/lib/shop-data";
 import { shopBasePath } from "@/lib/tenant";
 import { todayKey } from "@/lib/booking";
+import { getViewer } from "@/lib/customer";
 import { Heading } from "@/components/shop/theme";
 import { BookingForm } from "./BookingForm";
 
@@ -17,7 +18,9 @@ export default async function BookPage({ params }: PageProps<"/[lang]/s/[shop]/b
   const { shop: slug } = await params;
   const shop = await getPublicShop(slug);
   if (!shop) return null;
-  const [c, base, { t }] = await Promise.all([getShopContent(shop.id), shopBasePath(slug), getI18n()]);
+  // Anyone can pick a time; booking it needs a customer profile (the last
+  // step signs up or logs in without leaving the page).
+  const [c, base, viewer, { t }] = await Promise.all([getShopContent(shop.id), shopBasePath(slug), getViewer(), getI18n()]);
 
   if (!c.profile?.booking_enabled || c.services.length === 0) {
     return (
@@ -33,6 +36,7 @@ export default async function BookPage({ params }: PageProps<"/[lang]/s/[shop]/b
       <BookingForm
         slug={slug}
         base={base}
+        viewer={viewer}
         today={todayKey(shop.timezone)}
         maxDaysAhead={c.profile.max_days_ahead}
         autoConfirm={c.profile.auto_confirm}

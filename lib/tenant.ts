@@ -24,3 +24,11 @@ export async function shopBasePath(slug: string): Promise<string> {
   const h = await headers();
   return h.get(SHOP_HOST_HEADER) === slug ? "" : `/s/${slug}`;
 }
+
+/**
+ * A main-site link (shop list, /account) from inside a shop page: relative on
+ * the main site, absolute on a shop subdomain. `localized` is href("/account").
+ */
+export function mainSiteLink(base: string, localized: string): string {
+  return base ? localized : `${env.siteUrl()}${localized}`;
+}

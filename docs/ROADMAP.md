@@ -13,7 +13,7 @@ Status as of 2026-11-14: phases 1–4 are built and live on Vercel (https://kurd
 - [x] Home: hero with the ring, services, staff, gallery, social posts, about, hours, contact, social links, locations with map
 - [x] Booking: service → staff (or "anyone") → day → free times → name and phone → receipt
 - [x] Free-time calculation: hours, breaks, days off, notice, max days ahead, existing bookings, per-staff hours
-- [x] Receipt link with a secret token; "my bookings" saved on the customer's device
+- [x] Receipt link with a secret token (the device-saved "my bookings" list was replaced by customer profiles, Phase 6)
 - [x] Closed page for suspended shops
 
 ## ✅ Phase 3: Owner dashboard (zhewar admin style)
@@ -27,7 +27,7 @@ Status as of 2026-11-14: phases 1–4 are built and live on Vercel (https://kurd
 - [x] Plan limits on staff, photos and locations
 
 ## ✅ Phase 4: Platform + super admin
-- [x] Landing, pricing (from your plans), login
+- [x] Login (the landing and `/pricing` pages were removed on 2026-11-14: the home page is the customer shop list and prices are never public)
 - [x] `/signup` is an order form only (saved to `shop_requests`); only the super admin creates shops (`/super/shops/new`, or from an order in `/super/requests`)
 - [x] `/super`: overview (shops by status, income this month, expiring this week)
 - [x] Shops list and search, shop detail, record payment, extend trial, suspend, cancel
@@ -58,26 +58,28 @@ A separate app for customers (not the owner `/dashboard` app in `native/mobile`)
   - `my_appointments()` and `cancel_my_appointment()` for the logged-in customer
   - `reviews` with `submit_review()`, `reply_to_review()`, `set_review_hidden()`, and public `shop_rating()` / `shop_reviews()`
 
-- [x] **Web shops list** `/shops` in zhewar red/blue (the app will open this page); booking, my bookings and the receipt restyled to match zhewar
-- [ ] Home screen in the app: list of all active shops (not suspended/cancelled) with logo, name, rating; filter by type: هەموو / سەرتاشخانە / ئارایشتگای خانمان, and search by name. No city filter: launch is Sulaimani only (add `shops.city` later when other cities join)
+- [x] **Web shops list** in zhewar red/blue, now the site's home page `/` (`/shops` redirects there); booking and the receipt restyled to match zhewar
+- [x] Home screen in the app: the site's home page `/` (all listed live shops with logo, name, rating; filter هەموو / سەرتاشخانە / ئارایشتگای خانمان; search by name). No city filter: launch is Sulaimani only (add `shops.city` later when other cities join)
 - [x] «پیشاندان لە ئەپ» switch: `shops.listed` (default on), switch in Dashboard → Settings; `/super` shop page can hide a shop from the app. Hidden shops still work by link/QR
-- [ ] Shop page inside the app: same content as `/s/<slug>`, readable without an account
-- [ ] Customer accounts with Supabase Auth: **phone number + password**. Browsing needs no account; **an account is required only to book.**
+- [x] Shop page inside the app: the same `/s/<slug>`, readable without an account
+- [x] Customer accounts with Supabase Auth: **phone number + password** (2026-11-14). Browsing needs no account; **a profile is required only to book.** `/account` signs up / logs in. Supabase has no phone login without an SMS provider, so the login is a stand-in email `<phone>@phone.invalid` (undeliverable) and the phone sits in `app_metadata` (`lib/customer.ts`).
+- [ ] Verify the phone (until then anyone can register any number, and a forgotten customer password can't be reset):
   - Signup and "forgot password" verify the phone with a 6-digit code sent over **WhatsApp (Meta WhatsApp Cloud API)**, through Supabase's *Send SMS* auth hook (no Twilio).
   - Normal login is phone + password, so it sends no message and costs nothing.
   - Needs: Meta Business account, WhatsApp Business number, an approved *authentication* message template (Kurdish), access token stored as a secret.
   - Cost: about $0.008 per code in Iraq (check Meta's live rate card); SMS fallback can be added later for customers without WhatsApp.
 - [x] Link the account to the `customers` row of each shop it books at (`customers.user_id`, `0008`)
 - [x] RLS: a customer reads only their own appointments, in every shop; `customers` and `appointments` stay non-public otherwise
-- [ ] Booking flow asks for login at the moment of booking (keeps the chosen service/staff/time through signup), both on `/s/<slug>/book` and in the app; `book/actions.ts` takes the customer from the session, not from the form
-- [ ] "My bookings": history across all shops, with status (چاوەڕوان / پەسەندکراوە / هەڵوەشاوە / تەواوبوو / نەهات)
-- [ ] Customer cancels their own upcoming booking
+- [x] Booking flow asks for a profile at the moment of booking (the last step signs up / logs in in place and keeps the chosen service/staff/time); `book/actions.ts` takes the customer from the session, not from the form
+- [x] "My bookings" in `/account`: upcoming and past bookings across all shops, with status (چاوەڕوان / پەسەندکراوە / هەڵوەشاوە / تەواوبوو / نەهات), each opening its receipt
+- [x] Customer cancels their own upcoming booking (`cancel_my_appointment`, push to the shop)
 - [ ] Open a shop by link/QR, saved favourite shops
 - [ ] **Block a customer** (per shop) — *done on the shop side*: database rule, Block/Unblock in the bookings list (shown for no-shows and after 2+ no-shows), blocked badge, clear message on the booking page. Still needed: the customer app side. owner blocks a customer account from the booking list; a blocked customer can't book at that shop (checked in `book/actions.ts` and by the database). The dashboard suggests blocking after 2–3 no-shows (نەهات). Unblock any time
 - [ ] **Ratings & reviews** — *done on the shop side*: Dashboard → Reviews (reply once), rating + reviews on the public shop page, hide/show in `/super`. Still needed: the writing screen in the customer app. only for a booking marked تەواوبوو, one per booking, 1–5 stars + optional text. Average and count on the shop card and shop page. The owner can reply once; `/super` can hide abusive reviews (owners can't delete reviews)
 - [ ] Push to customers when status changes (confirmed, declined, reminder)
-- [ ] Capacitor project for the customer app, its own icon, splash and store listing
-- [ ] Move the device-saved "my bookings" and receipt tokens over to the account
+- [x] Capacitor project for the customer app: `native/customer` (`com.kurdbooking.app`, opens `/`, blue→red icon), signed APK served at `/kurdbooking.apk` with a download link on the customer pages (browsers only)
+- [ ] Customer app: final icon (Android 7 still shows the owner app's indigo PNGs), iOS project, store listing
+- [x] Device-saved "my bookings" removed (`/s/<slug>/my-bookings` redirects to `/account`)
 
 ## 🔜 Phase 7: Next features
 - [x] **Block hours by hand**: the owner closes part of a day (e.g. 3:00–4:00), for the whole shop or one staff member (`0007_blocked_hours.sql`, Schedule → closed days and hours)
