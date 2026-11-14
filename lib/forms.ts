@@ -14,7 +14,7 @@ export const PROFILE_FIELDS: Field[] = [
   { name: "tagline", label: { ckb: "دروشم", ar: "الشعار النصي", en: "Tagline" }, type: "text", maxLength: 120, placeholder: { ckb: "یەک ڕستەی کورت لەسەر دوکانەکەت", ar: "جملة قصيرة عن محلك", en: "One short line about your shop" } },
   { name: "about", label: { ckb: "دەربارەی ئێمە", ar: "من نحن", en: "About us" }, type: "textarea", maxLength: 1500 },
   { name: "logo_url", label: { ckb: "لۆگۆ", ar: "الشعار", en: "Logo" }, type: "image", folder: "branding" },
-  { name: "cover_url", label: { ckb: "وێنەی سەرەوە", ar: "صورة الغلاف", en: "Cover image" }, type: "image", folder: "branding" },
+  { name: "cover_url", label: { ckb: "وێنەی سەرەوە", ar: "صورة الغلاف", en: "Cover image" }, type: "image", folder: "branding", wide: true },
   { name: "primary_color", label: { ckb: "ڕەنگی سەرەکی", ar: "اللون الرئيسي", en: "Main colour" }, type: "color" },
   { name: "accent_color", label: { ckb: "ڕەنگی دووەم", ar: "اللون الثانوي", en: "Second colour" }, type: "color" },
   { name: "phone", label: { ckb: "ژمارەی مۆبایل", ar: "رقم الموبايل", en: "Mobile number" }, type: "tel" },

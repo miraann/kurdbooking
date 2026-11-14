@@ -27,7 +27,13 @@ export type Field =
   | (Base & { type: "date"; required?: boolean })
   | (Base & { type: "time"; required?: boolean })
   | (Base & { type: "color" })
-  | (Base & { type: "image"; folder: string; required?: boolean });
+  | (Base & {
+      type: "image";
+      folder: string;
+      required?: boolean;
+      /** Picker is a wide box instead of a circle (cover images). */
+      wide?: boolean;
+    });
 
 export type FieldValues = Record<string, string | number | boolean | null | undefined>;
 

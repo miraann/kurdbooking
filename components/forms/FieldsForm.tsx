@@ -2,6 +2,7 @@
 
 import { useActionState, useId } from "react";
 import { initialActionState, type ActionState, type Field, type FieldValues } from "@/lib/fields";
+import { ImagePicker } from "@/components/forms/ImagePicker";
 import { tx, type Lang } from "@/lib/i18n/config";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { useDialogClose } from "@/components/ui/FormDialog";
@@ -15,6 +16,7 @@ type FormAction = (state: ActionState, formData: FormData) => Promise<ActionStat
  * After each submit the form remounts (key = nonce): on success with the
  * saved values (or empty for "add" forms), on error with what was typed.
  * Inside a <FormDialog>, a successful save closes the dialog.
+ * Image fields are shown first, as dashed circles (<ImagePicker>).
  */
 export function FieldsForm({
   action,
@@ -39,13 +41,35 @@ export function FieldsForm({
     return next;
   }, initialActionState);
   const echo = !state.ok && state.values ? state.values : null;
+  const images = fields.filter((f): f is ImageField => f.type === "image");
+  const rest = fields.filter((f) => f.type !== "image");
 
   return (
     <form action={formAction} key={state.nonce ?? 0} className="space-y-4">
       {hidden && Object.entries(hidden).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
 
+      {images.length > 0 && (
+        <div className="flex flex-wrap items-start justify-center gap-6">
+          {images.map((f) => {
+            // Echoed values never include files, so show the saved image (the server kept it).
+            const saved = defaults?.[f.name];
+            return (
+              <ImagePicker
+                key={f.name}
+                name={f.name}
+                label={tx(f.label, lang)}
+                help={f.help ? tx(f.help, lang) : null}
+                current={typeof saved === "string" && saved ? saved : null}
+                required={f.required}
+                wide={f.wide}
+              />
+            );
+          })}
+        </div>
+      )}
+
       <div className={columns === 2 ? "grid gap-4 sm:grid-cols-2" : "grid gap-4"}>
-        {fields.map((f) => (
+        {rest.map((f) => (
           <FieldInput key={f.name} field={f} lang={lang} value={echo ? echo[f.name] : defaults?.[f.name]} echoed={!!echo} />
         ))}
       </div>
@@ -60,11 +84,12 @@ export function FieldsForm({
   );
 }
 
+type ImageField = Extract<Field, { type: "image" }>;
+
 function FieldInput({ field: f, lang, value, echoed }: { field: Field; lang: Lang; value: FieldValues[string]; echoed: boolean }) {
-  const { t } = useI18n();
   const id = useId();
   const str = value == null ? "" : String(value);
-  const wide = f.type === "textarea" || f.type === "image";
+  const wide = f.type === "textarea";
   const label = tx(f.label, lang);
   const help = f.help ? tx(f.help, lang) : null;
   const placeholder = "placeholder" in f && f.placeholder ? tx(f.placeholder, lang) : undefined;
@@ -98,21 +123,6 @@ function FieldInput({ field: f, lang, value, echoed }: { field: Field; lang: Lan
             <option key={o.value} value={o.value}>{tx(o.label, lang)}</option>
           ))}
         </select>
-      ) : f.type === "image" ? (
-        <div className="flex items-center gap-3">
-          {!echoed && str && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={str} alt="" className="size-16 rounded-2xl object-cover ring-1 ring-slate-100" />
-          )}
-          <div className="flex-1 space-y-1">
-            <input id={id} name={f.name} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="input" />
-            {!echoed && str && !f.required && (
-              <label className="flex items-center gap-2 text-xs text-slate-600">
-                <input type="checkbox" name={`${f.name}__remove`} /> {t.common.removeImage}
-              </label>
-            )}
-          </div>
-        </div>
       ) : f.type === "color" ? (
         <input id={id} name={f.name} type="color" defaultValue={str || "#2563eb"} className="h-12 w-24 cursor-pointer rounded-2xl border-0 bg-slate-100/60 p-1.5" />
       ) : (
