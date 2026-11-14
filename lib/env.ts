@@ -17,7 +17,12 @@ function required(name: string, value: string | undefined): string {
  */
 export function siteUrl(): string {
   const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL;
-  const url = process.env.NEXT_PUBLIC_SITE_URL || (vercel ? `https://${vercel}` : "http://localhost:3000");
+  const fromEnv = process.env.NEXT_PUBLIC_SITE_URL;
+  // A localhost value copied from .env.local into Vercel would send every
+  // link (shop footer, push alerts, reset links) to localhost: on Vercel,
+  // its own address wins over a localhost one.
+  const local = !fromEnv || /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(fromEnv);
+  const url = !local ? fromEnv : vercel ? `https://${vercel}` : fromEnv || "http://localhost:3000";
   return url.replace(/\/$/, "");
 }
 
