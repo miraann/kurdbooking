@@ -5,9 +5,10 @@ import { displayPhone } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { saveSettings } from "@/app/[lang]/super/actions";
 import { FieldsForm } from "@/components/forms/FieldsForm";
+import { PasswordForm } from "@/components/forms/PasswordForm";
 
 export default async function SuperSettings() {
-  const [, { t }] = await Promise.all([requireSuperAdmin(), getI18n()]);
+  const [admin, { t }] = await Promise.all([requireSuperAdmin(), getI18n()]);
   const supabase = await createClient();
   const { data } = await supabase.from("platform_settings").select("trial_days, grace_days, support_whatsapp").maybeSingle();
 
@@ -23,6 +24,12 @@ export default async function SuperSettings() {
           columns={1}
         />
       </div>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-bold">{t.password.changeTitle}</h2>
+        <p className="text-sm text-slate-500">{t.password.changeHelp}</p>
+        <PasswordForm mode="change" email={admin.email} className="card max-w-xl space-y-4" />
+      </section>
     </div>
   );
 }

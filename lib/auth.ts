@@ -31,6 +31,34 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   return { id: claims.sub, email: typeof claims.email === "string" ? claims.email : "" };
 });
 
+/** A reset link works for this long after it is opened (seconds). */
+const RECOVERY_WINDOW = 60 * 60;
+
+/**
+ * How Supabase marks a session that proved it owns the email (JWT amr
+ * claim): a reset link opened with verifyOtp gives "otp" (checked live), a
+ * PKCE reset email gives "recovery". A password login gives "password".
+ */
+const RESET_METHODS = new Set(["otp", "recovery"]);
+
+/**
+ * The logged-in user, but only when this session came from a password-reset
+ * link in the last hour (see RESET_METHODS). /reset-password and its action
+ * use it, so they can skip the current password. A normal password session
+ * gets null and changes the password in Settings instead.
+ */
+export async function getRecoveryUser(): Promise<SessionUser | null> {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims?.sub) return null;
+  const now = Math.floor(Date.now() / 1000);
+  const fresh = (claims.amr ?? []).some(
+    (a) => typeof a === "object" && RESET_METHODS.has(a.method) && now - a.timestamp < RECOVERY_WINDOW,
+  );
+  return fresh ? { id: claims.sub, email: typeof claims.email === "string" ? claims.email : "" } : null;
+}
+
 export async function requireUser(next = "/dashboard"): Promise<SessionUser> {
   const user = await getSessionUser();
   // Two logins: /super/login for you, /login for shops.

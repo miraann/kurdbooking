@@ -8,6 +8,7 @@ import { eligibleStaff, getAvailability } from "@/lib/availability.server";
 import { zonedToUtc } from "@/lib/booking";
 import { displayPhone, fill, fmt, normalizePhone } from "@/lib/format";
 import { notifyShop } from "@/lib/push";
+import { allowAttempt } from "@/lib/rate-limit";
 import { DICTS } from "@/lib/i18n/dictionaries";
 import { localePath } from "@/lib/i18n/config";
 import { getActionI18n } from "@/lib/i18n/request";
@@ -48,6 +49,8 @@ export async function bookAppointment(slug: string, raw: BookingInput): Promise<
   const input = parsed.data;
   const phone = normalizePhone(input.phone);
   if (!phone) return { ok: false, message: e.phoneInvalid };
+  // Per-IP limit against scripted bookings (lib/rate-limit.ts).
+  if (!(await allowAttempt("booking"))) return { ok: false, message: t.errors.tooFast };
 
   const admin = createAdminClient();
   const { data: shop } = await admin.from("shops").select("id, status, timezone").eq("slug", slug).maybeSingle();

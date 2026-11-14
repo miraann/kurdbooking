@@ -1,6 +1,6 @@
 # Roadmap
 
-Status as of 2026-11-11: phases 1–4 are built. Everything below is checked by `npm run typecheck`, `npm run lint`, `npm test` and `npm run build`. **Nothing has run against a real Supabase project yet.** Create one (see README) and try the signup → dashboard → booking flow end to end first.
+Status as of 2026-11-14: phases 1–4 are built and live on Vercel (https://kurdbooking-dlpz.vercel.app) with every migration applied to the live Supabase project. Everything below is checked by `npm run typecheck`, `npm run lint`, `npm test` and `npm run build`.
 
 ## ✅ Phase 1: Foundation
 - [x] Next.js 16 project (Cache Components, Turbopack, Tailwind 4, Kurdish font, RTL)
@@ -79,16 +79,16 @@ A separate app for customers (not the owner `/dashboard` app in `native/mobile`)
 ## 🔜 Phase 7: Next features
 - [x] **Block hours by hand**: the owner closes part of a day (e.g. 3:00–4:00), for the whole shop or one staff member (`0007_blocked_hours.sql`, Schedule → closed days and hours)
 - [ ] **Waitlist**: when a day is full, a logged-in customer joins the waitlist for that day (and optional service/staff). When a booking is cancelled, everyone waiting gets a push; the first to book gets the slot (no holding). Needs customer accounts and push first
-- [ ] Password reset for owners (Supabase email + `/auth/callback` + new-password page)
+- [x] **Password reset**: `/forgot-password` emails a link; `/super` → shop → «Owner's password» makes a one-time link to send on WhatsApp (no email needed); both open `/auth/confirm` → `/reset-password`. Logged in: Settings → change password (asks for the current one; dashboard and `/super`). Real emails to owners need SMTP in Supabase (README → Setup step 6)
 - [ ] Staff accounts: invite a barber/stylist to log in with role `staff`
 - [ ] Choose which staff do which service (`staff_services` exists; needs an editor)
 - [ ] Per-staff working hours and days off (the tables support it; needs an editor)
 - [ ] Post preview: paste a link, auto-fill the image (port zhewar `app/api/fb-preview` with its SSRF guard)
 - [ ] Optional face scan and Facebook link at booking (zhewar features), as shop settings
-- [ ] Booking rate limit by IP (Upstash, like zhewar); today it's 3 future bookings per phone
+- [x] **Rate limits** in the database instead of Upstash (`0012_rate_limits.sql`, `lib/rate-limit.ts`): bookings 8 per IP per 10 min, `/signup` orders 5 per hour, both logins 10 per 10 min, reset emails 5 per hour, password change 5 per 10 min per account. Plus the old rule: 3 future bookings per phone
 - [ ] Reminder the day before (WhatsApp link list, or SMS later)
 - [ ] Old-photo cleanup job for storage (zhewar `scripts/cleanup-orphan-storage.mts`)
-- [ ] Security headers / CSP like zhewar `next.config.js`
+- [x] **Security headers**: CSP (scripts, frames and connections only from our site, images from Supabase Storage), HSTS, nosniff, frame and referrer rules (`next.config.ts`)
 - [ ] Online payment: FIB or ZainCash API → `record_payment` automatically
 - [ ] Shops' own domains (`shops.custom_domain` exists; needs Vercel Domains API + proxy lookup)
 - [x] **Three languages: Kurdish Sorani (default), Arabic, English.** Dictionaries in `lib/i18n/dictionaries`, pages under `app/[lang]`, `/ar/…` and `/en/…` URLs, picker on the platform header, shop page, dashboard and `/super`, per-language digits/dates/times, Kurdish and Arabic fonts. Arabic and English texts need a review by a native speaker

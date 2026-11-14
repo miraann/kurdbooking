@@ -5,6 +5,10 @@ import { after } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createPublicClient } from "@/lib/supabase/public";
+import { getProfile, getRecoveryUser, requireUser } from "@/lib/auth";
+import { siteUrl } from "@/lib/env";
+import { allowAttempt } from "@/lib/rate-limit";
 import { displayPhone, fill, normalizePhone } from "@/lib/format";
 import { notifySuperAdmins } from "@/lib/push";
 import { DICTS } from "@/lib/i18n/dictionaries";
@@ -50,6 +54,7 @@ export async function requestShop(_prev: ActionState, formData: FormData): Promi
   const input = parsed.data;
   const phone = normalizePhone(input.phone);
   if (!phone) return fail(t.signup.errors.phoneInvalid, formData);
+  if (!(await allowAttempt("shopRequest"))) return fail(t.errors.tooFast, formData);
 
   // Public form → secret key (visitors can't write the table themselves).
   const admin = createAdminClient();
@@ -103,6 +108,8 @@ async function signIn(kind: LoginKind, formData: FormData): Promise<ActionState>
   const values = { email: String(formData.get("email") ?? "") };
   const fail = (message?: string): ActionState => ({ ok: false, message, values, nonce: Date.now() });
   if (!parsed.success) return fail(parsed.error.issues[0]?.message);
+  // Supabase sees our server's IP, not the visitor's, so we limit per visitor here.
+  if (!(await allowAttempt("login"))) return fail(t.errors.tooFast);
 
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
@@ -135,4 +142,91 @@ export async function login(_prev: ActionState, formData: FormData): Promise<Act
 /** /super/login: the super admin only. */
 export async function superLogin(_prev: ActionState, formData: FormData): Promise<ActionState> {
   return signIn("super", formData);
+}
+
+// ── Passwords ──────────────────────────────────────────────────────────────
+// Three ways to a new password:
+// 1. /forgot-password emails a reset link (Supabase Auth).
+// 2. /super/shops/<id> makes the same kind of link for you to send to the
+//    owner on WhatsApp (makeResetLink in super/actions.ts), no email needed.
+// Both links open /auth/confirm, which logs the person in for the reset and
+// sends them to /reset-password (resetPassword below).
+// 3. Logged in: Settings → change password, with the current one (changePassword).
+
+const newPasswordSchema = (t: Dict) =>
+  z
+    .object({
+      password: z.string().min(8, t.password.tooShort).max(72, t.password.tooLong),
+      confirm: z.string(),
+    })
+    .refine((v) => v.password === v.confirm, { message: t.password.mismatch });
+
+/** Supabase's answer to updateUser → a message in the visitor's language. */
+function passwordError(t: Dict, error: { code?: string } | null): string {
+  if (error?.code === "same_password") return t.password.same;
+  if (error?.code === "weak_password") return t.password.weak;
+  return t.password.failed;
+}
+
+/** /forgot-password: email a reset link. Same answer whether the email has an account or not. */
+export async function requestPasswordReset(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { t, href } = await getActionI18n();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const values = { email };
+  const parsed = z.string().email().safeParse(email);
+  if (!parsed.success) return { ok: false, message: t.login.invalidEmail, values, nonce: Date.now() };
+  if (!(await allowAttempt("passwordEmail"))) return { ok: false, message: t.errors.tooFast, values, nonce: Date.now() };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
+    redirectTo: `${siteUrl()}${href("/auth/confirm")}`,
+  });
+  // Supabase says nothing about unknown emails; an error here is its send
+  // limit or a mail problem.
+  if (error) return { ok: false, message: t.password.sendFailed, values, nonce: Date.now() };
+  return { ok: true, message: t.password.sent, values, nonce: Date.now() };
+}
+
+/** /reset-password: a new password from a reset link (no current password needed). */
+export async function resetPassword(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { t, href } = await getActionI18n();
+  const user = await getRecoveryUser();
+  if (!user) return { ok: false, message: t.password.needLink, nonce: Date.now() };
+  const parsed = newPasswordSchema(t).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message, nonce: Date.now() };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+  if (error) return { ok: false, message: passwordError(t, error), nonce: Date.now() };
+  // Whoever had the old password is logged out everywhere else.
+  await supabase.auth.signOut({ scope: "others" });
+
+  const profile = await getProfile(user.id);
+  redirect(href(profile?.is_super_admin ? "/super" : "/dashboard"));
+}
+
+/** Settings → change password (dashboard and /super). Asks for the current one. */
+export async function changePassword(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { t } = await getActionI18n();
+  const user = await requireUser();
+  const fail = (message?: string): ActionState => ({ ok: false, message, nonce: Date.now() });
+  const parsed = newPasswordSchema(t).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message);
+  const current = String(formData.get("current") ?? "");
+  if (!current) return fail(t.login.passwordRequired);
+  // Per account: stops guessing the current password from a stolen session.
+  if (!(await allowAttempt("passwordChange", user.id))) return fail(t.errors.tooFast);
+
+  // Check the current password on a separate client without cookies, so the
+  // logged-in session is left alone; then end that extra session.
+  const check = createPublicClient();
+  const { error: wrong } = await check.auth.signInWithPassword({ email: user.email, password: current });
+  if (wrong) return fail(t.password.currentWrong);
+  await check.auth.signOut({ scope: "local" });
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+  if (error) return fail(passwordError(t, error));
+  await supabase.auth.signOut({ scope: "others" });
+  return { ok: true, message: t.password.changed, nonce: Date.now() };
 }

@@ -6,10 +6,11 @@ import { saveAppListing, saveBookingSettings } from "@/app/[lang]/dashboard/acti
 import { FieldsForm } from "@/components/forms/FieldsForm";
 import { ResourceEditor } from "@/components/dashboard/ResourceEditor";
 import { PushAlerts } from "@/components/push/PushAlerts";
+import { PasswordForm } from "@/components/forms/PasswordForm";
 import { pushPublicKey } from "@/lib/push";
 
 export default async function SettingsPage() {
-  const [{ shop }, { t }] = await Promise.all([requireShop(), getI18n()]);
+  const [{ shop, user }, { t }] = await Promise.all([requireShop(), getI18n()]);
   const s = t.dashboard.settings;
   const supabase = await createClient();
   const [{ data: profile }, publicKey] = await Promise.all([
@@ -46,6 +47,12 @@ export default async function SettingsPage() {
         <h2 className="text-lg font-bold">{s.templates}</h2>
         <p className="text-sm text-slate-500">{s.templatesHelp}</p>
         <ResourceEditor resource="whatsapp_templates" />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-bold">{t.password.changeTitle}</h2>
+        <p className="text-sm text-slate-500">{t.password.changeHelp}</p>
+        <PasswordForm mode="change" email={user.email} className="card max-w-xl space-y-4" />
       </section>
     </div>
   );

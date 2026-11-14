@@ -28,8 +28,18 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // The push service worker: always fetch the newest one.
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+      {
         source: "/(.*)",
         headers: [
+          { key: "Content-Security-Policy", value: contentSecurityPolicy() },
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
@@ -39,5 +49,42 @@ const nextConfig: NextConfig = {
     ];
   },
 };
+
+/**
+ * Content-Security-Policy, the same idea as zhewar's next.config.js.
+ * Pages are prerendered (Cache Components), so they can't carry a
+ * per-request nonce: scripts need 'unsafe-inline' (Next.js's own inline
+ * scripts, and the bridge script the Capacitor app injects). What it still
+ * blocks: scripts, frames and connections to other sites, plugins, <base>
+ * tricks, forms posting elsewhere, and other sites framing our pages.
+ * Images come from Supabase Storage only.
+ */
+function contentSecurityPolicy(): string {
+  const dev = process.env.NODE_ENV !== "production";
+  const preview = process.env.VERCEL_ENV === "preview"; // Vercel's comment toolbar
+  let supabase = "";
+  try {
+    supabase = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").origin;
+  } catch {
+    // No Supabase URL at build time: the pages show the setup error anyway.
+  }
+  const live = preview ? " https://vercel.live" : "";
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""}${live}`,
+    "style-src 'self' 'unsafe-inline'",
+    `img-src 'self' data: blob: ${supabase}${preview ? " https://vercel.live https://vercel.com" : ""}`.trim(),
+    "font-src 'self'",
+    `connect-src 'self' ${supabase}${dev ? " ws: wss:" : ""}${preview ? " https://vercel.live wss://ws-us3.pusher.com" : ""}`.trim(),
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    `frame-src ${preview ? "https://vercel.live" : "'none'"}`,
+    "frame-ancestors 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    ...(dev ? [] : ["upgrade-insecure-requests"]),
+  ].join("; ");
+}
 
 export default nextConfig;

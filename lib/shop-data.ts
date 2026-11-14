@@ -1,6 +1,7 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
+import { env } from "@/lib/env";
 import type {
   GalleryPhoto, Location, Post, PublicReview, PublicShop, Service, ShopKind, ShopProfile, SocialLink, Staff, WorkingHours,
 } from "@/lib/types";
@@ -14,6 +15,17 @@ export const shopSlugTag = (slug: string) => `shop-slug-${slug}`;
 /** The customer shops list (/shops). Any listing, status or branding change refreshes it. */
 export const LISTED_SHOPS_TAG = "listed-shops";
 export const isValidSlug = (slug: string) => /^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(slug);
+
+/** The support WhatsApp number (/super settings, else NEXT_PUBLIC_SUPPORT_WHATSAPP). */
+export const PLATFORM_SETTINGS_TAG = "platform-settings";
+export async function getSupportWhatsapp(): Promise<string> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(PLATFORM_SETTINGS_TAG);
+
+  const { data } = await createPublicClient().from("platform_settings").select("support_whatsapp").maybeSingle();
+  return data?.support_whatsapp || env.supportWhatsapp();
+}
 
 export async function getPublicShop(slug: string): Promise<PublicShop | null> {
   "use cache";

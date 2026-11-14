@@ -18,11 +18,16 @@ Project rules for Claude/VS Code are in [CLAUDE.md](CLAUDE.md). What's built and
 1. Create a new project at [supabase.com](https://supabase.com), separate from zhewar's.
    - Pick the region nearest Iraq, for example Frankfurt (`eu-central-1`).
 2. Go to **Database → Extensions** and enable **pg_cron**.
-3. Open the **SQL Editor** and run each file in `supabase/migrations`, in order:
-   `0001_platform.sql` → `0002_shop_content.sql` → `0003_booking.sql` → `0004_functions.sql` → `0005_rls.sql` → `0006_cron.sql`
+3. Run every file in `supabase/migrations`, in order (`0001_platform.sql` up to the newest).
+   - Either paste each one into the **SQL Editor**, or put `SUPABASE_DB_URL` in `.env.local` and run `npm run db:migrate -- 0001_platform.sql 0002_shop_content.sql …`.
 4. Go to **Authentication → Sign In / Providers** and turn **off** "Allow new users to sign up".
    - The app creates accounts itself through the secret key, so this only blocks accounts made outside the app.
 5. Go to **Project Settings → API Keys** and copy the URL, the **publishable** key and the **secret** key.
+6. Password resets (`/forgot-password`) send an email through Supabase:
+   - **Authentication → URL Configuration:** set **Site URL** to the live address, and add `https://<live address>/**` under **Redirect URLs**.
+   - **Authentication → Emails → SMTP Settings:** Supabase's built-in mail only reaches your own team's addresses and sends very few emails an hour. Add an SMTP service (for example Resend or Brevo) before owners rely on it.
+   - Optional: in the **Reset password** template, change the link to `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery`, so the email works on any device and not only in the browser that asked.
+   - Without email, use **/super → the shop → Owner's password**: it makes a one-time link you send on WhatsApp.
 
 ### Environment
 

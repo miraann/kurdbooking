@@ -8,7 +8,7 @@
 // 2. Shop subdomains:  ali.kurdbooking.com/ar/book  →  /ar/s/ali/book  (rewrite)
 //    Only when NEXT_PUBLIC_ROOT_DOMAIN is set. Without it, shops live at
 //    /s/<slug> on the main site and nothing is rewritten.
-// 3. Owner/admin areas (/dashboard, /super, /login): refreshes the Supabase
+// 3. Owner/admin areas (/dashboard, /super, /login, /reset-password): refreshes the Supabase
 //    session cookie, and sends logged-out visitors to their login: /login for
 //    shops, /super/login for the super admin (two separate logins).
 //
@@ -34,7 +34,8 @@ function shopSlugFromHost(host: string): string | null {
 
 const PROTECTED = ["/dashboard", "/super"];
 const SUPER_LOGIN = "/super/login";
-const NEEDS_SESSION = [...PROTECTED, "/login"];
+// /reset-password: the reset link's session must stay fresh (no redirect there).
+const NEEDS_SESSION = [...PROTECTED, "/login", "/reset-password"];
 const under = (path: string, list: string[]) => list.some((p) => path === p || path.startsWith(`${p}/`));
 
 export async function proxy(request: NextRequest) {

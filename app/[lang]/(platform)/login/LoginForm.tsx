@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { initialActionState } from "@/lib/fields";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { SubmitButton } from "@/components/ui/SubmitButton";
@@ -8,7 +9,7 @@ import { login, superLogin } from "../auth-actions";
 
 /** `admin` = the super admin login (/super/login); otherwise the shop login. */
 export function LoginForm({ next, admin = false }: { next?: string; admin?: boolean }) {
-  const { t } = useI18n();
+  const { t, href } = useI18n();
   const [state, action] = useActionState(admin ? superLogin : login, initialActionState);
   return (
     <form action={action} key={state.nonce ?? 0} className="card space-y-4">
@@ -20,6 +21,7 @@ export function LoginForm({ next, admin = false }: { next?: string; admin?: bool
       <div>
         <label htmlFor="password" className="label">{t.login.password}</label>
         <input id="password" name="password" type="password" dir="ltr" required autoComplete="current-password" className="input" />
+        <Link href={href("/forgot-password")} className="mt-2 inline-block text-sm font-semibold text-brand">{t.password.forgot}</Link>
       </div>
       {state.message && <p className="text-sm text-rose-700">{state.message}</p>}
       <SubmitButton className="btn-primary w-full py-3">{t.login.title}</SubmitButton>

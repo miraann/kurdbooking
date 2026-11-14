@@ -12,6 +12,7 @@ import { extendTrial, recordPayment, setReviewHidden, setShopHidden, setShopStat
 import { FieldsForm } from "@/components/forms/FieldsForm";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { Stars } from "@/components/ui/Stars";
+import { ResetLink } from "./ResetLink";
 
 export default async function SuperShopDetail({ params }: PageProps<"/[lang]/super/shops/[id]">) {
   const [, { lang, t, f }] = await Promise.all([requireSuperAdmin(), getI18n()]);
@@ -99,6 +100,18 @@ export default async function SuperShopDetail({ params }: PageProps<"/[lang]/sup
           />
         </section>
       </div>
+
+      {owner && (
+        <section className="card space-y-3">
+          <h2 className="font-bold">{ts.resetTitle}</h2>
+          <p className="text-sm text-slate-500">{ts.resetHelp}</p>
+          <ResetLink
+            shopId={s.id}
+            phone={phone}
+            ownerName={typeof owner.user_metadata?.full_name === "string" ? owner.user_metadata.full_name : s.name}
+          />
+        </section>
+      )}
 
       <section className="space-y-3">
         <h2 className="text-lg font-bold">{ts.reviews}</h2>

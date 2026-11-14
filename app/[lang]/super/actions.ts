@@ -12,7 +12,8 @@ import type { ActionState, Field } from "@/lib/fields";
 import { PAYMENT_FIELDS, PLAN_FIELDS, PLATFORM_SETTINGS_FIELDS, TRIAL_FIELDS } from "@/lib/forms";
 import { getActionI18n } from "@/lib/i18n/request";
 import type { Lang } from "@/lib/i18n/config";
-import { LISTED_SHOPS_TAG, shopSlugTag, shopTag } from "@/lib/shop-data";
+import { LISTED_SHOPS_TAG, PLATFORM_SETTINGS_TAG, shopSlugTag, shopTag } from "@/lib/shop-data";
+import { siteUrl } from "@/lib/env";
 import { userMessage } from "@/lib/errors";
 
 // Every action starts with requireSuperAdmin(); RLS checks is_super_admin
@@ -154,6 +155,7 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
   } catch (e) {
     return failed(lang, e, PLATFORM_SETTINGS_FIELDS, formData);
   }
+  updateTag(PLATFORM_SETTINGS_TAG); // support WhatsApp on /forgot-password
   refresh();
   return done(t.common.saved);
 }
@@ -201,6 +203,30 @@ export async function extendTrial(shopId: string, slug: string, _prev: ActionSta
   updateTag(LISTED_SHOPS_TAG); // the shop may now be live (or not) in the customer list
   refresh();
   return done(t.super.shop.trialExtended);
+}
+
+/**
+ * A password-reset link for a shop's owner, to send on WhatsApp (no email
+ * needed). It opens /auth/confirm, works once and expires with Supabase's
+ * email link expiry (1 hour by default). Nothing is sent from here.
+ */
+export async function makeResetLink(shopId: string): Promise<{ ok: boolean; message?: string; link?: string }> {
+  const { t } = await getActionI18n();
+  await requireSuperAdmin();
+  const supabase = await createClient();
+  const { data: shop } = await supabase.from("shops").select("owner_id").eq("id", shopId).maybeSingle();
+  if (!shop?.owner_id) return { ok: false, message: t.super.shop.noOwner };
+
+  const admin = createAdminClient();
+  const { data: owner } = await admin.auth.admin.getUserById(shop.owner_id);
+  const email = owner.user?.email;
+  if (!email) return { ok: false, message: t.super.shop.noOwner };
+
+  const { data, error } = await admin.auth.admin.generateLink({ type: "recovery", email });
+  const hash = data?.properties?.hashed_token;
+  if (error || !hash) return { ok: false, message: t.super.shop.resetFailed };
+  // No language prefix: the owner's own language cookie picks it.
+  return { ok: true, link: `${siteUrl()}/auth/confirm?token_hash=${encodeURIComponent(hash)}&type=recovery` };
 }
 
 /** Hide a shop from the customer app list (its link and QR keep working). */

@@ -45,7 +45,7 @@ await db.exec(`
 `);
 
 // 0006 (pg_cron schedule) needs the cron extension, which PGlite doesn't have.
-for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql', '0009_shop_requests.sql', '0010_web_push.sql', '0011_native_push.sql']) {
+for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql', '0009_shop_requests.sql', '0010_web_push.sql', '0011_native_push.sql', '0012_rate_limits.sql']) {
   try { await db.exec(readFileSync(new URL(f, MIG), 'utf8')); console.log('applied', f); }
   catch (e) { console.log('MIGRATION FAILED', f, e.message, e.position ?? ''); process.exit(1); }
 }
@@ -337,6 +337,25 @@ await as('authenticated', users.sara);
 ok("sara cannot see Ali's app token", (await db.query(`select * from public.push_subscriptions where kind='fcm'`)).rows.length === 0);
 await as(null);
 await expectError('only one push key pair', `insert into public.push_keys (public_key, private_key) values ('pub2','priv2')`, [], 'duplicate key');
+
+// ── Rate limits (0012) ─────────────────────────────────────────────────────
+const hit = async (key, max = 3, windowSeconds = 600) =>
+  (await db.query(`select public.hit_rate_limit($1,$2,$3) ok`, [key, max, windowSeconds])).rows[0].ok;
+const firstThree = [await hit('booking:aaa'), await hit('booking:aaa'), await hit('booking:aaa')];
+ok('rate limit allows up to the max', firstThree.every(Boolean));
+ok('rate limit refuses one over the max', (await hit('booking:aaa')) === false);
+ok('refused attempts are not counted', (await db.query(`select count(*)::int c from public.rate_limits where key='booking:aaa'`)).rows[0].c === 3);
+ok('another key has its own count', (await hit('booking:bbb')) === true);
+await db.query(`update public.rate_limits set hit_at = now() - interval '11 minutes' where key='booking:aaa'`);
+ok('old attempts fall out of the window', (await hit('booking:aaa')) === true);
+await expectError('rate limit rejects a bad window', `select public.hit_rate_limit('x', 1, 0)`, [], 'bad_rate_limit');
+await as('anon');
+await expectError('anon cannot call the rate limit', `select public.hit_rate_limit('booking:ccc', 100, 60)`, [], 'permission denied');
+await expectError('anon cannot read rate limit rows', `select * from public.rate_limits`, [], 'permission denied');
+await as('authenticated', users.ali);
+await expectError('owner cannot call the rate limit', `select public.hit_rate_limit('booking:ccc', 100, 60)`, [], 'permission denied');
+await expectError('owner cannot clear rate limit rows', `delete from public.rate_limits`, [], 'permission denied');
+await as(null);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
