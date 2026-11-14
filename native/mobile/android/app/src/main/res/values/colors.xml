@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The dashboard background (bg-surface, zhewar #FAFAFC). Used behind the status and
+         navigation bars and on the launch screen, so the app never flashes another colour. -->
+    <color name="kb_surface">#FAFAFC</color>
+</resources>

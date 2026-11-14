@@ -22,6 +22,13 @@ const config: CapacitorConfig = {
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"],
     },
+    // Android: MainActivity keeps the page between the status and navigation bars itself
+    // (the site's viewport-fit=cover would otherwise put the dashboard under the status bar).
+    // "LIGHT" = dark bar icons on the light #FAFAFC strips.
+    SystemBars: {
+      insetsHandling: "disable",
+      style: "LIGHT",
+    },
   },
   android: {
     backgroundColor: "#fafafc", // matches the dashboard background (zhewar #FAFAFC): no white flash

@@ -12,7 +12,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/[lang]"
             Kurd<span className="text-brand-gradient">Booking</span>
           </Link>
           <nav className="ms-auto flex min-w-0 items-center gap-1 text-sm sm:gap-2">
-            <LanguageSwitcher />
+            <LanguageSwitcher className="hidden sm:inline-flex" />
             <Link href={href("/shops")} className="hidden rounded-xl px-3 py-2 font-medium text-slate-500 hover:bg-white md:block">{t.platform.findShop}</Link>
             <Link href={href("/pricing")} className="hidden rounded-xl px-3 py-2 font-medium text-slate-500 hover:bg-white sm:block">{t.platform.pricing}</Link>
             <Link href={href("/login")} className="rounded-xl px-2 py-2 font-medium text-slate-500 hover:bg-white sm:px-3">{t.platform.login}</Link>
@@ -21,8 +21,10 @@ export default async function PlatformLayout({ children }: LayoutProps<"/[lang]"
         </div>
       </header>
       <main className="flex-1">{children}</main>
-      <footer className="border-t border-slate-200/70 py-6 text-center text-xs text-slate-500" dir="ltr">
-        KurdBooking · miranbarzanji.site
+      <footer className="flex flex-col items-center gap-3 border-t border-slate-200/70 py-6 text-center text-xs text-slate-500">
+        {/* Phones: the language picker sits here, the header has no room (like ShopFrame). */}
+        <LanguageSwitcher className="sm:hidden" />
+        <span dir="ltr">KurdBooking · miranbarzanji.site</span>
       </footer>
     </div>
   );

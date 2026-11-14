@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launch screen icon (windowSplashScreenAnimatedIcon in styles.xml): the round app icon.
+     The splash shows this drawable at 288dp and crops it to a 192dp circle (its middle 2/3),
+     so the gradient circle fills exactly that middle part (r = 512 of 1536) and the calendar
+     sits in it as on the launcher. Same artwork as ic_launcher_foreground.xml. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="1536"
+    android:viewportHeight="1536">
+    <path android:pathData="M256,768a512,512 0,1 1,1024 0a512,512 0,1 1,-1024 0z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="1280"
+                android:startY="256"
+                android:endX="256"
+                android:endY="1280"
+                android:startColor="#4F46E5"
+                android:endColor="#7C3AED" />
+        </aapt:attr>
+    </path>
+    <group
+        android:translateX="256"
+        android:translateY="256">
+        <path
+            android:pathData="M304,276H720A72,72 0,0 1,792 348V704A72,72 0,0 1,720 776H304A72,72 0,0 1,232 704V348A72,72 0,0 1,304 276Z"
+            android:strokeWidth="56"
+            android:strokeColor="#FFFFFF" />
+        <path
+            android:pathData="M232,420H792"
+            android:strokeWidth="56"
+            android:strokeColor="#FFFFFF" />
+        <path
+            android:pathData="M384,212V320M640,212V320"
+            android:strokeWidth="56"
+            android:strokeColor="#FFFFFF"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M392,598L482,684L652,520"
+            android:strokeWidth="60"
+            android:strokeColor="#FFFFFF"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+    </group>
+</vector>
