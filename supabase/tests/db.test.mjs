@@ -45,7 +45,7 @@ await db.exec(`
 `);
 
 // 0006 (pg_cron schedule) needs the cron extension, which PGlite doesn't have.
-for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql', '0009_shop_requests.sql', '0010_web_push.sql', '0011_native_push.sql', '0012_rate_limits.sql', '0013_favorites.sql', '0014_reminders.sql']) {
+for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql', '0009_shop_requests.sql', '0010_web_push.sql', '0011_native_push.sql', '0012_rate_limits.sql', '0013_favorites.sql', '0014_reminders.sql', '0015_staff_logins.sql']) {
   try { await db.exec(readFileSync(new URL(f, MIG), 'utf8')); console.log('applied', f); }
   catch (e) { console.log('MIGRATION FAILED', f, e.message, e.position ?? ''); process.exit(1); }
 }
@@ -385,6 +385,30 @@ ok('customer removes a favourite', (await db.query(`delete from public.favorite_
 await as(null);
 await db.query(`update public.shops set status=$2 where id=$1`, [shopA, statusA]);
 await db.query(`update public.shops set status=$2 where id=$1`, [shopB, statusB]);
+
+// ── Staff logins (0015) ────────────────────────────────────────────────────
+await as(null);
+const ownerStaff = (await db.query(`select user_id from public.staff where shop_id=$1 order by sort_order limit 1`, [shopA])).rows[0];
+ok("the owner's own staff row is linked to the owner", ownerStaff.user_id === users.ali);
+users.barber = (await db.query(`insert into auth.users (email) values ('barber@x.com') returning id`)).rows[0].id;
+await as('authenticated', users.ali);
+const newStaff = (await db.query(`insert into public.staff (shop_id, name) values ($1,'Barber') returning id`, [shopA])).rows[0].id;
+ok('owner adds a staff member without a login', !!newStaff);
+await expectError('owner cannot link a staff row to an account', `update public.staff set user_id=$1 where id=$2`, [users.barber, newStaff], 'staff_link_forbidden');
+await expectError('owner cannot add a staff row with an account', `insert into public.staff (shop_id, name, user_id) values ($1,'X',$2)`, [shopA, users.barber], 'staff_link_forbidden');
+ok('owner still edits the rest of a linked row', (await db.query(`update public.staff set title='Boss' where shop_id=$1 and user_id=$2`, [shopA, users.ali])).affectedRows === 1);
+await as(null);
+await db.query(`update public.staff set user_id=$1 where id=$2`, [users.barber, newStaff]);
+await db.query(`insert into public.shop_members (shop_id, user_id, role) values ($1,$2,'staff')`, [shopA, users.barber]);
+await as('authenticated', users.barber);
+ok("staff login reads the shop's bookings", (await db.query(`select * from public.appointments where shop_id=$1`, [shopA])).rows.length > 0);
+ok('staff login cannot change services', (await db.query(`update public.services set name='x' where shop_id=$1`, [shopA])).affectedRows === 0);
+ok('staff login cannot edit staff', (await db.query(`update public.staff set name='x' where shop_id=$1`, [shopA])).affectedRows === 0);
+ok("staff login sees nothing of another shop", (await db.query(`select * from public.appointments where shop_id=$1`, [shopB])).rows.length === 0);
+await expectError('staff login cannot add members', `insert into public.shop_members (shop_id, user_id, role) values ($1,$2,'owner')`, [shopA, users.kawa], 'row-level security');
+await as(null);
+await db.query(`delete from public.shop_members where shop_id=$1 and user_id=$2`, [shopA, users.barber]);
+await db.query(`delete from public.staff where id=$1`, [newStaff]);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

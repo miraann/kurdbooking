@@ -1,4 +1,4 @@
-import { requireShop } from "@/lib/auth";
+import { canManage, requireShop } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { APP_FIELDS, BOOKING_FIELDS } from "@/lib/forms";
 import { getI18n } from "@/lib/i18n/server";
@@ -10,7 +10,8 @@ import { PasswordForm } from "@/components/forms/PasswordForm";
 import { pushPublicKey } from "@/lib/push";
 
 export default async function SettingsPage() {
-  const [{ shop, user }, { t }] = await Promise.all([requireShop(), getI18n()]);
+  const [{ shop, user, role }, { t }] = await Promise.all([requireShop(), getI18n()]);
+  const manager = canManage(role); // staff logins see only alerts and their password
   const s = t.dashboard.settings;
   const supabase = await createClient();
   const [{ data: profile }, publicKey] = await Promise.all([
@@ -28,26 +29,30 @@ export default async function SettingsPage() {
 
       <PushAlerts publicKey={publicKey} />
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-bold">{s.booking}</h2>
-        <div className="card">
-          <FieldsForm action={saveBookingSettings} fields={BOOKING_FIELDS} defaults={profile ?? undefined} submitLabel={t.common.save} />
-        </div>
-      </section>
+      {manager && (
+        <>
+          <section className="space-y-3">
+            <h2 className="text-lg font-bold">{s.booking}</h2>
+            <div className="card">
+              <FieldsForm action={saveBookingSettings} fields={BOOKING_FIELDS} defaults={profile ?? undefined} submitLabel={t.common.save} />
+            </div>
+          </section>
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-bold">{s.app}</h2>
-        <div className="card space-y-3">
-          {shop.hidden_by_admin && <p className="rounded-2xl bg-amber-50 p-3 text-sm text-amber-800">{s.hiddenByAdmin}</p>}
-          <FieldsForm action={saveAppListing} fields={APP_FIELDS} defaults={{ listed: shop.listed }} submitLabel={s.appSave} columns={1} />
-        </div>
-      </section>
+          <section className="space-y-3">
+            <h2 className="text-lg font-bold">{s.app}</h2>
+            <div className="card space-y-3">
+              {shop.hidden_by_admin && <p className="rounded-2xl bg-amber-50 p-3 text-sm text-amber-800">{s.hiddenByAdmin}</p>}
+              <FieldsForm action={saveAppListing} fields={APP_FIELDS} defaults={{ listed: shop.listed }} submitLabel={s.appSave} columns={1} />
+            </div>
+          </section>
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-bold">{s.templates}</h2>
-        <p className="text-sm text-slate-500">{s.templatesHelp}</p>
-        <ResourceEditor resource="whatsapp_templates" />
-      </section>
+          <section className="space-y-3">
+            <h2 className="text-lg font-bold">{s.templates}</h2>
+            <p className="text-sm text-slate-500">{s.templatesHelp}</p>
+            <ResourceEditor resource="whatsapp_templates" />
+          </section>
+        </>
+      )}
 
       <section className="space-y-3">
         <h2 className="text-lg font-bold">{t.password.changeTitle}</h2>

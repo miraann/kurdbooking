@@ -7,7 +7,7 @@ import { saveProfile } from "@/app/[lang]/dashboard/actions";
 import { FieldsForm } from "@/components/forms/FieldsForm";
 
 export default async function ProfilePage() {
-  const [{ shop }, { t }] = await Promise.all([requireShop(), getI18n()]);
+  const [{ shop }, { t }] = await Promise.all([requireShop(["owner", "manager"]), getI18n()]);
   const supabase = await createClient();
   const { data: profile } = await supabase.from("shop_profile").select("*").eq("shop_id", shop.id).maybeSingle();
 

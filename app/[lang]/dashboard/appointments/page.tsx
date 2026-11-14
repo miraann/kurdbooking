@@ -30,20 +30,26 @@ const STATUS_STYLE: Record<AppointmentStatus, string> = {
 };
 
 export default async function AppointmentsPage({ searchParams }: PageProps<"/[lang]/dashboard/appointments">) {
-  const { view: rawView } = await searchParams;
+  const { view: rawView, mine: rawMine } = await searchParams;
   const view: View = VIEWS.find((v) => v === rawView) ?? "upcoming";
   await connection(); // uses the current time below, so never prerender this page
-  const [{ shop, role }, { lang, t, f, href }] = await Promise.all([requireShop(), getI18n()]);
+  const [{ shop, role, user }, { lang, t, f, href }] = await Promise.all([requireShop(), getI18n()]);
   const manager = canManage(role);
   const ta = t.dashboard.appointments;
   const supabase = await createClient();
   const now = new Date().toISOString();
+
+  // The logged-in person's own staff row (staff logins, and the owner's own row).
+  const { data: me } = await supabase.from("staff").select("id").eq("shop_id", shop.id).eq("user_id", user.id).maybeSingle();
+  const mine = !!me && rawMine === "1";
+  const viewUrl = (v: View, onlyMine = mine) => href(`/dashboard/appointments?view=${v}${onlyMine ? "&mine=1" : ""}`);
 
   let query = supabase
     .from("appointments")
     .select("*, customers(id, full_name, phone, blocked_at), staff(name)")
     .eq("shop_id", shop.id)
     .limit(200);
+  if (mine && me) query = query.eq("staff_id", me.id);
   if (view === "past") query = query.lt("starts_at", now).order("starts_at", { ascending: false });
   else if (view === "tomorrow") {
     // Tomorrow in the shop's time zone, for the day-before WhatsApp reminders.
@@ -92,10 +98,19 @@ export default async function AppointmentsPage({ searchParams }: PageProps<"/[la
 
       <nav className="flex flex-wrap gap-2">
         {VIEWS.map((v) => (
-          <Link key={v} href={href(`/dashboard/appointments?view=${v}`)} className={v === view ? "btn-primary px-3 py-1.5" : "btn-ghost px-3 py-1.5"}>
+          <Link key={v} href={viewUrl(v)} className={v === view ? "btn-primary px-3 py-1.5" : "btn-ghost px-3 py-1.5"}>
             {ta[v]}
           </Link>
         ))}
+        {me && (
+          <Link
+            href={viewUrl(view, !mine)}
+            aria-pressed={mine}
+            className={`ms-auto rounded-full px-3 py-1.5 text-sm font-semibold ${mine ? "bg-indigo-600 text-white" : "border border-slate-200 bg-white text-slate-600"}`}
+          >
+            {ta.mine}
+          </Link>
+        )}
       </nav>
 
       {view === "tomorrow" && <p className="text-sm text-slate-500">{ta.tomorrowHelp}</p>}

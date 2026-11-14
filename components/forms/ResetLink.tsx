@@ -3,16 +3,23 @@
 import { useState, useTransition } from "react";
 import { fill, whatsappLink } from "@/lib/format";
 import { useI18n } from "@/components/i18n/I18nProvider";
-import { makeResetLink } from "@/app/[lang]/super/actions";
 
-/** Makes a one-time password-reset link for the owner, then WhatsApp or copy. */
-export function ResetLink({ shopId, phone, ownerName }: { shopId: string; phone?: string | null; ownerName: string }) {
+type Result = { ok: boolean; message?: string; link?: string };
+
+/**
+ * Makes a one-time password-reset link (a bound Server Action), then sends it
+ * on WhatsApp or copies it. `message` is the WhatsApp text with a {link}
+ * placeholder. Without a phone, WhatsApp opens to pick the chat.
+ * Used for shop owners (/super) and staff logins (dashboard).
+ */
+export function ResetLink({ make, phone, message, label }: { make: () => Promise<Result>; phone?: string | null; message: string; label: string }) {
   const { t } = useI18n();
   const ts = t.super.shop;
   const [pending, start] = useTransition();
-  const [result, setResult] = useState<{ ok: boolean; message?: string; link?: string } | null>(null);
+  const [result, setResult] = useState<Result | null>(null);
   const [copied, setCopied] = useState(false);
   const link = result?.link;
+  const text = link ? fill(message, { link }) : "";
 
   return (
     <div className="space-y-3">
@@ -23,7 +30,7 @@ export function ResetLink({ shopId, phone, ownerName }: { shopId: string; phone?
         onClick={() =>
           start(async () => {
             setCopied(false);
-            setResult(await makeResetLink(shopId));
+            setResult(await make());
           })
         }
       >
@@ -32,18 +39,16 @@ export function ResetLink({ shopId, phone, ownerName }: { shopId: string; phone?
       {result && !result.ok && <p className="text-sm text-rose-700">{result.message}</p>}
       {link && (
         <div className="space-y-2">
-          <input readOnly value={link} dir="ltr" aria-label={ts.resetTitle} className="input text-xs" onFocus={(e) => e.currentTarget.select()} />
+          <input readOnly value={link} dir="ltr" aria-label={label} className="input text-xs" onFocus={(e) => e.currentTarget.select()} />
           <div className="flex flex-wrap gap-2">
-            {phone && (
-              <a
-                href={whatsappLink(phone, fill(ts.resetMessage, { name: ownerName, link }))}
-                target="_blank"
-                rel="noreferrer"
-                className="btn-primary"
-              >
-                {ts.resetSend}
-              </a>
-            )}
+            <a
+              href={phone ? whatsappLink(phone, text) : `https://wa.me/?text=${encodeURIComponent(text)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-primary"
+            >
+              {ts.resetSend}
+            </a>
             <button
               type="button"
               className="btn-ghost"

@@ -9,7 +9,7 @@ import { PAYMENT_METHOD, SHOP_STATUS } from "@/lib/labels";
 import type { Payment, Plan } from "@/lib/types";
 
 export default async function BillingPage() {
-  const [{ shop, role }, { lang, t, f }] = await Promise.all([requireShop(), getI18n()]);
+  const [{ shop, role }, { lang, t, f }] = await Promise.all([requireShop(["owner", "manager"]), getI18n()]);
   const b = t.dashboard.billing;
   const supabase = await createClient();
 

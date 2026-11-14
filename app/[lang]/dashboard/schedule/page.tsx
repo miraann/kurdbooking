@@ -7,7 +7,7 @@ import { HoursForm } from "@/components/dashboard/HoursForm";
 import { ResourceEditor } from "@/components/dashboard/ResourceEditor";
 
 export default async function SchedulePage() {
-  const [{ shop }, { t }] = await Promise.all([requireShop(), getI18n()]);
+  const [{ shop }, { t }] = await Promise.all([requireShop(["owner", "manager"]), getI18n()]);
   const s = t.dashboard.schedule;
   const supabase = await createClient();
   const { data } = await supabase.from("working_hours").select("*").eq("shop_id", shop.id).is("staff_id", null);

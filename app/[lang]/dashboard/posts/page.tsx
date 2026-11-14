@@ -1,8 +1,9 @@
+import { requireShop } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
 import { ResourceEditor } from "@/components/dashboard/ResourceEditor";
 
 export default async function PostsPage() {
-  const { t } = await getI18n();
+  const [, { t }] = await Promise.all([requireShop(["owner", "manager"]), getI18n()]); // staff logins can't open this page
   return (
     <div className="space-y-5">
       <div>

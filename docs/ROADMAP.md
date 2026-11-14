@@ -86,7 +86,7 @@ A separate app for customers (not the owner `/dashboard` app in `native/mobile`)
 - [x] **Block hours by hand**: the owner closes part of a day (e.g. 3:00–4:00), for the whole shop or one staff member (`0007_blocked_hours.sql`, Schedule → closed days and hours)
 - [ ] **Waitlist**: when a day is full, a logged-in customer joins the waitlist for that day (and optional service/staff). When a booking is cancelled, everyone waiting gets a push; the first to book gets the slot (no holding). Needs customer accounts and push first
 - [x] **Password reset**: `/forgot-password` emails a link; `/super` → shop → «Owner's password» makes a one-time link to send on WhatsApp (no email needed); both open `/auth/confirm` → `/reset-password`. Logged in: Settings → change password (asks for the current one; dashboard and `/super`). Real emails to owners need SMTP in Supabase (README → Setup step 6)
-- [ ] Staff accounts: invite a barber/stylist to log in with role `staff`
+- [x] **Staff logins** (`0015_staff_logins.sql`): Staff → the person → «چوونەژوورەوە»: the owner or a manager makes an email + password (copy / WhatsApp), a one-time reset link, or removes it (deleting the staff member removes it too). Staff logins see Home, Bookings (with «تەنها هی من») and Settings (alerts, password) only, and get pushes for their own bookings. Only the server links `staff.user_id`
 - [x] **Which staff do which service**: Staff → «خزمەتگوزاری و کاتی کار» (`/dashboard/staff/<id>`); all on = every service, new ones too
 - [x] **Per-staff working hours** on the same page (own week, or back to the shop's hours); per-staff days off and closed hours are in Schedule («بۆ کێ»)
 - [ ] Post preview: paste a link, auto-fill the image (port zhewar `app/api/fb-preview` with its SSRF guard)

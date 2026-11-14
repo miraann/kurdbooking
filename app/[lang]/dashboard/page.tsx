@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import Link from "next/link";
-import { requireShop } from "@/lib/auth";
+import { canManage, requireShop } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { shopUrl } from "@/lib/tenant";
 import { addDays, todayKey, zonedToUtc } from "@/lib/booking";
@@ -11,7 +11,7 @@ import { ShopQr } from "@/components/dashboard/ShopQr";
 
 export default async function DashboardHome() {
   await connection(); // uses the current time below, so never prerender this page
-  const [{ shop }, { lang, t, f, href }] = await Promise.all([requireShop(), getI18n()]);
+  const [{ shop, role }, { lang, t, f, href }] = await Promise.all([requireShop(), getI18n()]);
   const h = t.dashboard.home;
   const supabase = await createClient();
   const today = todayKey(shop.timezone);
@@ -43,7 +43,7 @@ export default async function DashboardHome() {
         <Stat label={h.pendingCount} value={f.num(pending ?? 0)} href={href("/dashboard/appointments?view=pending")} highlight={!!pending} />
       </div>
 
-      {services === 0 && (
+      {services === 0 && canManage(role) && (
         <div className="card-emphasized">
           <p className="font-semibold">{h.firstStepTitle}</p>
           <p className="mt-1 text-sm text-slate-600">{h.firstStepText}</p>

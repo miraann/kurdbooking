@@ -16,6 +16,7 @@ import { APP_FIELDS, BOOKING_FIELDS, PROFILE_FIELDS, REPLY_FIELDS } from "@/lib/
 import { LISTED_SHOPS_TAG, shopSlugTag, shopTag } from "@/lib/shop-data";
 import { userMessage } from "@/lib/errors";
 import { digits, fill } from "@/lib/format";
+import { siteUrl } from "@/lib/env";
 import { getActionI18n } from "@/lib/i18n/request";
 import type { Lang } from "@/lib/i18n/config";
 import { DICTS } from "@/lib/i18n/dictionaries";
@@ -79,9 +80,18 @@ export async function deleteResource(key: ResourceKey, id: string): Promise<Acti
   const { shop } = await requireShop(["owner", "manager"]);
   const supabase = await createClient();
 
+  // A staff member's own login goes with them (checked before the row is gone).
+  const admin = createAdminClient();
+  let staffUser: string | null = null;
+  if (key === "staff") {
+    const { data: row } = await supabase.from("staff").select("user_id").eq("id", id).eq("shop_id", shop.id).maybeSingle();
+    staffUser = await staffLogin(admin, shop.id, (row?.user_id as string | null) ?? null);
+  }
+
   const { data, error } = await supabase.from(cfg.table).delete().eq("id", id).eq("shop_id", shop.id).select("*").maybeSingle();
   if (error) return { ok: false, message: userMessage(error, lang) };
   if (cfg.imageField && data) await removeImages(supabase, [(data as Record<string, string | null>)[cfg.imageField]]);
+  if (staffUser && data) await dropStaffLogin(admin, shop.id, staffUser);
 
   afterChange(shop.id);
   return { ok: true };
@@ -352,4 +362,121 @@ export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect((await getActionI18n()).href("/login"));
+}
+
+// ── Staff logins ───────────────────────────────────────────────────────────
+// An owner or manager gives a staff member their own login (role 'staff').
+// Accounts are made and removed with the secret key, after requireShop.
+// Only accounts that are 'staff' everywhere (never an owner, a manager or the
+// super admin) can get a reset link or be removed here.
+
+type Admin = ReturnType<typeof createAdminClient>;
+
+async function isStaffOnlyAccount(admin: Admin, userId: string): Promise<boolean> {
+  const [{ data: memberships }, { data: profile }] = await Promise.all([
+    admin.from("shop_members").select("role").eq("user_id", userId),
+    admin.from("profiles").select("is_super_admin").eq("id", userId).maybeSingle(),
+  ]);
+  return !profile?.is_super_admin && (memberships ?? []).every((m) => m.role === "staff");
+}
+
+/** The staff row's login, only when it is a 'staff' member of this shop. */
+async function staffLogin(admin: Admin, shopId: string, userId: string | null) {
+  if (!userId) return null;
+  const { data: member } = await admin.from("shop_members").select("role").eq("shop_id", shopId).eq("user_id", userId).maybeSingle();
+  if (member?.role !== "staff" || !(await isStaffOnlyAccount(admin, userId))) return null;
+  return userId;
+}
+
+export async function createStaffLogin(staffId: string, email: string, password: string): Promise<{ ok: boolean; message?: string }> {
+  const { t } = await getActionI18n();
+  const d = t.dashboard.staffDetail;
+  const { shop } = await requireShop(["owner", "manager"]);
+  const supabase = await createClient();
+  const staff = await shopStaff(supabase, shop.id, staffId);
+  if (!staff) return { ok: false, message: t.common.unknown };
+  if (staff.user_id) return { ok: false, message: d.hasLogin };
+  const parsed = z
+    .object({
+      email: z.string().trim().toLowerCase().email(t.login.invalidEmail),
+      password: z.string().min(8, t.password.tooShort).max(72, t.password.tooLong),
+    })
+    .safeParse({ email, password });
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? t.errors.invalidData };
+
+  const admin = createAdminClient();
+  const { data: created, error } = await admin.auth.admin.createUser({
+    email: parsed.data.email,
+    password: parsed.data.password,
+    email_confirm: true,
+    user_metadata: { full_name: staff.name },
+  });
+  if (error || !created.user) {
+    const exists = error?.code === "email_exists" || /already/i.test(error?.message ?? "");
+    if (!exists) console.error("staff login failed", error?.code, error?.message);
+    return { ok: false, message: exists ? d.emailExists : d.loginFailed };
+  }
+  const userId = created.user.id;
+  const { error: memberError } = await admin.from("shop_members").insert({ shop_id: shop.id, user_id: userId, role: "staff" });
+  const linked = memberError
+    ? null
+    : await admin.from("staff").update({ user_id: userId }).eq("shop_id", shop.id).eq("id", staffId).is("user_id", null).select("id");
+  if (memberError || linked?.error || !linked?.data?.length) {
+    // Someone linked this row at the same moment, or a write failed: undo.
+    await admin.from("shop_members").delete().eq("shop_id", shop.id).eq("user_id", userId);
+    await admin.auth.admin.deleteUser(userId);
+    return { ok: false, message: d.loginFailed };
+  }
+  // No refresh(): the form shows the email and password to pass on, then refreshes itself.
+  return { ok: true };
+}
+
+/** A one-time link for the staff member to set a new password (sent by the owner on WhatsApp). */
+export async function staffResetLink(staffId: string): Promise<{ ok: boolean; message?: string; link?: string }> {
+  const { t } = await getActionI18n();
+  const { shop } = await requireShop(["owner", "manager"]);
+  const supabase = await createClient();
+  const staff = await shopStaff(supabase, shop.id, staffId);
+  const admin = createAdminClient();
+  const userId = staff ? await staffLogin(admin, shop.id, staff.user_id) : null;
+  if (!userId) return { ok: false, message: t.common.unknown };
+  const { data: user } = await admin.auth.admin.getUserById(userId);
+  const email = user.user?.email;
+  if (!email) return { ok: false, message: t.common.unknown };
+  const { data, error } = await admin.auth.admin.generateLink({ type: "recovery", email });
+  const hash = data?.properties?.hashed_token;
+  if (error || !hash) return { ok: false, message: t.super.shop.resetFailed };
+  return { ok: true, link: `${siteUrl()}/auth/confirm?token_hash=${encodeURIComponent(hash)}&type=recovery` };
+}
+
+/** Takes the login away: the membership goes, and the account too when it belongs to no other shop. */
+export async function removeStaffLogin(staffId: string): Promise<ActionState> {
+  const { lang, t } = await getActionI18n();
+  const { shop } = await requireShop(["owner", "manager"]);
+  const supabase = await createClient();
+  const staff = await shopStaff(supabase, shop.id, staffId);
+  if (!staff) return { ok: false, message: t.common.unknown };
+  if (!staff.user_id) return { ok: true };
+  const admin = createAdminClient();
+  const userId = await staffLogin(admin, shop.id, staff.user_id);
+  if (!userId) return { ok: false, message: t.dashboard.staffDetail.ownerLogin };
+
+  const { error: linkError } = await admin.from("staff").update({ user_id: null }).eq("shop_id", shop.id).eq("id", staffId);
+  if (linkError) return { ok: false, message: userMessage(linkError, lang) };
+  const dropped = await dropStaffLogin(admin, shop.id, userId);
+  if (!dropped.ok) return { ok: false, message: userMessage(dropped.error, lang) };
+  refresh();
+  return { ok: true };
+}
+
+/** Ends a 'staff' login's access to this shop, and deletes the account when no other shop has it. */
+async function dropStaffLogin(admin: Admin, shopId: string, userId: string): Promise<{ ok: true } | { ok: false; error: unknown }> {
+  const { error } = await admin.from("shop_members").delete().eq("shop_id", shopId).eq("user_id", userId).eq("role", "staff");
+  if (error) return { ok: false, error };
+  const { count } = await admin.from("shop_members").select("user_id", { count: "exact", head: true }).eq("user_id", userId);
+  if (!count) {
+    const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
+    if (deleteError) console.error("staff account delete failed", deleteError.message);
+  }
+  return { ok: true };
 }

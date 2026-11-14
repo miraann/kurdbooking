@@ -7,6 +7,7 @@ import { splitLocale } from "@/lib/i18n/config";
 import { DASHBOARD_LINKS, MORE_LINK } from "@/components/dashboard/links";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
+import { useRole } from "@/components/dashboard/role";
 
 /**
  * Sidebar (desktop) and pill tab bar (phones). The active link comes from the
@@ -28,8 +29,10 @@ function NavAtPath() {
 
 function NavView({ pathname }: { pathname: string | null }) {
   const { lang, href } = useI18n();
+  const role = useRole();
+  const links = DASHBOARD_LINKS.filter((l) => role !== "staff" || l.staff);
   const isActive = (to: string) => pathname !== null && (to === "/dashboard" ? pathname === to : pathname.startsWith(to));
-  const tabs = [...DASHBOARD_LINKS.filter((l) => l.tab), MORE_LINK];
+  const tabs = [...links.filter((l) => l.tab), MORE_LINK];
   // On a section that isn't in the tab bar, light up «زیاتر».
   const onTab = tabs.some((t) => t.href !== MORE_LINK.href && isActive(t.href));
 
@@ -41,7 +44,7 @@ function NavView({ pathname }: { pathname: string | null }) {
           Kurd<span className="text-brand-gradient">Booking</span>
         </Link>
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto scrollbar-hide">
-          {DASHBOARD_LINKS.map(({ href: to, label, icon: Icon }) => {
+          {links.map(({ href: to, label, icon: Icon }) => {
             const active = isActive(to);
             return (
               <Link

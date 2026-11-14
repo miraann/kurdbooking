@@ -12,7 +12,7 @@ import { Stars } from "@/components/ui/Stars";
 // Owners and managers reply once; nobody here can edit or delete a review.
 
 export default async function ReviewsPage() {
-  const [{ shop, role }, { t, f }] = await Promise.all([requireShop(), getI18n()]);
+  const [{ shop, role }, { t, f }] = await Promise.all([requireShop(["owner", "manager"]), getI18n()]);
   const tr = t.dashboard.reviews;
   const supabase = await createClient();
   const { data, error } = await supabase

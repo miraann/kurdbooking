@@ -91,7 +91,7 @@ export const RESOURCES: Record<ResourceKey, ResourceConfig> = {
     imageField: "photo_url",
     orderBy: { column: "sort_order", ascending: true },
     limit: "max_staff",
-    detail: { href: "/dashboard/staff/{id}", label: { ckb: "خزمەتگوزاری و کاتی کار", ar: "الخدمات وأوقات العمل", en: "Services and hours" } },
+    detail: { href: "/dashboard/staff/{id}", label: { ckb: "خزمەتگوزاری، کاتی کار و چوونەژوورەوە", ar: "الخدمات وأوقات العمل والدخول", en: "Services, hours and login" } },
     fields: [
       { name: "name", label: L.name, type: "text", required: true, maxLength: 80 },
       { name: "title", label: { ckb: "پلە / ناونیشان", ar: "المسمى", en: "Job title" }, type: "text", maxLength: 60, placeholder: { ckb: "بۆ نموونە: وەستا", ar: "مثلاً: أسطة", en: "e.g. Master barber" } },

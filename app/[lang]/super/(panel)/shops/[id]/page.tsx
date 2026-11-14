@@ -4,15 +4,15 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { shopUrl } from "@/lib/tenant";
 import { PAYMENT_FIELDS, TRIAL_FIELDS } from "@/lib/forms";
-import { displayPhone, whatsappLink } from "@/lib/format";
+import { displayPhone, fill, whatsappLink } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { PAYMENT_METHOD, SHOP_KIND, SHOP_STATUS } from "@/lib/labels";
 import type { Payment, Plan, Review, Shop } from "@/lib/types";
-import { extendTrial, recordPayment, setReviewHidden, setShopHidden, setShopStatus } from "@/app/[lang]/super/actions";
+import { extendTrial, makeResetLink, recordPayment, setReviewHidden, setShopHidden, setShopStatus } from "@/app/[lang]/super/actions";
 import { FieldsForm } from "@/components/forms/FieldsForm";
 import { ActionButton } from "@/components/ui/ActionButton";
 import { Stars } from "@/components/ui/Stars";
-import { ResetLink } from "./ResetLink";
+import { ResetLink } from "@/components/forms/ResetLink";
 
 export default async function SuperShopDetail({ params }: PageProps<"/[lang]/super/shops/[id]">) {
   const [, { lang, t, f }] = await Promise.all([requireSuperAdmin(), getI18n()]);
@@ -106,9 +106,11 @@ export default async function SuperShopDetail({ params }: PageProps<"/[lang]/sup
           <h2 className="font-bold">{ts.resetTitle}</h2>
           <p className="text-sm text-slate-500">{ts.resetHelp}</p>
           <ResetLink
-            shopId={s.id}
+            make={makeResetLink.bind(null, s.id)}
             phone={phone}
-            ownerName={typeof owner.user_metadata?.full_name === "string" ? owner.user_metadata.full_name : s.name}
+            label={ts.resetTitle}
+            // {link} stays in the text; the box fills it once the link exists.
+            message={fill(ts.resetMessage, { name: typeof owner.user_metadata?.full_name === "string" ? owner.user_metadata.full_name : s.name })}
           />
         </section>
       )}

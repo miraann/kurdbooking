@@ -4,6 +4,7 @@ import { ChevronLeft, UserRound } from "lucide-react";
 import { z } from "zod";
 import { requireShop } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getI18n } from "@/lib/i18n/server";
 import type { Field } from "@/lib/fields";
 import type { Service, Staff, WorkingHours } from "@/lib/types";
@@ -11,10 +12,11 @@ import { followShopHours, saveStaffHours, saveStaffServices } from "@/app/[lang]
 import { FieldsForm } from "@/components/forms/FieldsForm";
 import { HoursForm } from "@/components/dashboard/HoursForm";
 import { ActionButton } from "@/components/ui/ActionButton";
+import { StaffLogin } from "@/components/dashboard/StaffLogin";
 
-// One staff member: which services they do and their own weekly hours.
-// No staff_services rows = every service; no own working_hours rows = the
-// shop's hours (lib/availability.server.ts reads both).
+// One staff member: which services they do, their own weekly hours, and
+// their own login. No staff_services rows = every service; no own
+// working_hours rows = the shop's hours (lib/availability.server.ts reads both).
 export default async function StaffDetailPage({ params }: PageProps<"/[lang]/dashboard/staff/[id]">) {
   const { id } = await params;
   if (!z.uuid().safeParse(id).success) notFound();
@@ -43,6 +45,18 @@ export default async function StaffDetailPage({ params }: PageProps<"/[lang]/das
     type: "checkbox",
   }));
   const serviceDefaults = Object.fromEntries(services.map((s) => [`svc_${s.id}`, linked.size === 0 || linked.has(s.id)]));
+
+  // Their login, if any: the email (auth needs the secret key) and whether it
+  // is a 'staff' login of this shop (the owner's own row is linked too).
+  let login: { email: string; staffRole: boolean } | null = null;
+  if (staff.user_id) {
+    const admin = createAdminClient();
+    const [{ data: user }, { data: member }] = await Promise.all([
+      admin.auth.admin.getUserById(staff.user_id),
+      admin.from("shop_members").select("role").eq("shop_id", shop.id).eq("user_id", staff.user_id).maybeSingle(),
+    ]);
+    login = { email: user.user?.email ?? "", staffRole: member?.role === "staff" };
+  }
 
   return (
     <div className="space-y-8">
@@ -103,6 +117,14 @@ export default async function StaffDetailPage({ params }: PageProps<"/[lang]/das
           {d.daysOffHint}{" "}
           <Link href={href("/dashboard/schedule")} className="font-semibold text-indigo-600 underline">{t.dashboard.schedule.title}</Link>
         </p>
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-bold">{d.loginTitle}</h2>
+        <p className="text-sm text-slate-500">{d.loginHelp}</p>
+        <div className="card">
+          <StaffLogin staffId={id} staffName={staff.name} login={login} />
+        </div>
       </section>
     </div>
   );

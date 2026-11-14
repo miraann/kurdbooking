@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { requireShop } from "@/lib/auth";
 import { getI18n } from "@/lib/i18n/server";
 import { ResourceEditor } from "@/components/dashboard/ResourceEditor";
 
 export default async function ContactPage() {
-  const { t, href } = await getI18n();
+  const [, { t, href }] = await Promise.all([requireShop(["owner", "manager"]), getI18n()]); // staff logins can't open this page
   const c = t.dashboard.contact;
   return (
     <div className="space-y-8">

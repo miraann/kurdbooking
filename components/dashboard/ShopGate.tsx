@@ -6,6 +6,7 @@ import { shopUrl } from "@/lib/tenant";
 import { daysUntil, fill } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { signOut, switchShop } from "@/app/[lang]/dashboard/actions";
+import { RoleSync } from "@/components/dashboard/role";
 
 /**
  * Top of every dashboard page: which shop, its public link, the
@@ -13,7 +14,7 @@ import { signOut, switchShop } from "@/app/[lang]/dashboard/actions";
  */
 export async function ShopGate({ children }: { children: React.ReactNode }) {
   await connection(); // "days left" below reads the current time: never prerender (not even a runtime prefetch)
-  const [{ shop, shops }, { t, f, href }] = await Promise.all([requireShop(), getI18n()]);
+  const [{ shop, shops, role }, { t, f, href }] = await Promise.all([requireShop(), getI18n()]);
   const g = t.dashboard.gate;
   const publicUrl = shopUrl(shop.slug);
   const endsAt = shop.status === "trial" ? shop.trial_ends_at : shop.paid_until;
@@ -22,6 +23,7 @@ export async function ShopGate({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <RoleSync role={role} />
       <header className="mb-6 flex flex-wrap items-center gap-3">
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-lg font-bold">{shop.name}</h1>
