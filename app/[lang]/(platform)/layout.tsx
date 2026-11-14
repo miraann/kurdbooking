@@ -12,7 +12,8 @@ export default async function PlatformLayout({ children }: LayoutProps<"/[lang]"
             Kurd<span className="text-brand-gradient">Booking</span>
           </Link>
           <nav className="ms-auto flex min-w-0 items-center gap-1 text-sm sm:gap-2">
-            <LanguageSwitcher className="hidden sm:inline-flex" />
+            {/* max-sm:hidden, not "hidden sm:inline-flex": the switcher's own inline-flex comes after hidden in the CSS. */}
+            <LanguageSwitcher className="max-sm:hidden" />
             <Link href={href("/shops")} className="hidden rounded-xl px-3 py-2 font-medium text-slate-500 hover:bg-white md:block">{t.platform.findShop}</Link>
             <Link href={href("/pricing")} className="hidden rounded-xl px-3 py-2 font-medium text-slate-500 hover:bg-white sm:block">{t.platform.pricing}</Link>
             <Link href={href("/login")} className="rounded-xl px-2 py-2 font-medium text-slate-500 hover:bg-white sm:px-3">{t.platform.login}</Link>

@@ -50,7 +50,8 @@ export async function ShopFrame({ params, children }: { params: Promise<{ shop: 
             <span className="truncate font-display text-lg font-bold">{shop.name}</span>
           </Link>
           <nav className="ms-auto flex items-center gap-1 text-sm">
-            <LanguageSwitcher className="hidden sm:inline-flex" />
+            {/* max-sm:hidden, not "hidden sm:inline-flex": the switcher's own inline-flex comes after hidden in the CSS. */}
+            <LanguageSwitcher className="max-sm:hidden" />
             <Link href={href(`${base}/my-bookings`)} className="rounded-full px-3 py-2 font-medium text-neutral-500 hover:text-neutral-900">
               {t.shop.myBookings}
             </Link>
