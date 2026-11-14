@@ -1,8 +1,12 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import { connection } from "next/server";
 import Form from "next/form";
 import type { Metadata } from "next";
-import { ChevronLeft, Search } from "lucide-react";
+import { ChevronLeft, Heart, Search } from "lucide-react";
 import { getListedShops, type ListedShop } from "@/lib/shop-data";
+import { createClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/customer";
 import { fill } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { Stars } from "@/components/ui/Stars";
@@ -43,6 +47,11 @@ export default async function HomePage({ searchParams }: PageProps<"/[lang]">) {
         <Heading as="h1" eyebrow="SHOPS" title={s.title}>
           <p className="mx-auto mt-4 max-w-md text-balance text-[0.95rem] font-medium leading-relaxed text-neutral-500">{s.subtitle}</p>
         </Heading>
+
+        {/* A logged-in customer's saved shops first (reads the session). */}
+        <Suspense fallback={null}>
+          <FavoriteStrip />
+        </Suspense>
 
         {/* Search (keeps the chosen type) */}
         <Form action={href("/")} className="mx-auto flex max-w-xl gap-2">
@@ -157,5 +166,33 @@ async function ShopCard({ shop }: { shop: ListedShop }) {
         </div>
       </div>
     </Link>
+  );
+}
+
+/** Saved shops as small logo chips above the search; nothing for guests or when none are saved. */
+async function FavoriteStrip() {
+  await connection(); // the session check compares token expiry with the current time
+  const viewer = await getViewer();
+  if (viewer.kind !== "customer") return null;
+  const supabase = await createClient();
+  const [{ data }, { t, href }] = await Promise.all([supabase.rpc("my_favorite_shops"), getI18n()]);
+  const shops = (data ?? []) as Pick<ListedShop, "id" | "slug" | "name" | "kind" | "logo_url">[];
+  if (shops.length === 0) return null;
+  return (
+    <section className="mx-auto mb-6 max-w-xl" aria-label={t.account.favorites}>
+      <h2 className="mb-2 flex items-center gap-1.5 text-sm font-bold text-neutral-700">
+        <Heart className="size-4" color="#ef4444" fill="#ef4444" aria-hidden /> {t.account.favorites}
+      </h2>
+      <ul className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-1 scrollbar-hide">
+        {shops.map((s) => (
+          <li key={s.id} className="shrink-0">
+            <Link href={href(`/s/${s.slug}`)} className="flex w-20 flex-col items-center gap-1.5 text-center">
+              <LogoRing logoUrl={s.logo_url} kind={s.kind} className="size-16" iconClassName="size-6" spin={false} />
+              <span className="line-clamp-2 text-xs font-bold leading-tight text-neutral-800">{s.name}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

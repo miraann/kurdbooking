@@ -45,7 +45,7 @@ await db.exec(`
 `);
 
 // 0006 (pg_cron schedule) needs the cron extension, which PGlite doesn't have.
-for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql', '0009_shop_requests.sql', '0010_web_push.sql', '0011_native_push.sql', '0012_rate_limits.sql']) {
+for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql', '0009_shop_requests.sql', '0010_web_push.sql', '0011_native_push.sql', '0012_rate_limits.sql', '0013_favorites.sql', '0014_reminders.sql']) {
   try { await db.exec(readFileSync(new URL(f, MIG), 'utf8')); console.log('applied', f); }
   catch (e) { console.log('MIGRATION FAILED', f, e.message, e.position ?? ''); process.exit(1); }
 }
@@ -356,6 +356,35 @@ await as('authenticated', users.ali);
 await expectError('owner cannot call the rate limit', `select public.hit_rate_limit('booking:ccc', 100, 60)`, [], 'permission denied');
 await expectError('owner cannot clear rate limit rows', `delete from public.rate_limits`, [], 'permission denied');
 await as(null);
+
+// ── Favourite shops (0013) ─────────────────────────────────────────────────
+await as(null);
+const statusOf = async (id) => (await db.query(`select status from public.shops where id=$1`, [id])).rows[0].status;
+const [statusA, statusB] = [await statusOf(shopA), await statusOf(shopB)];
+await db.query(`update public.shops set status='active' where id=$1`, [shopA]);
+await db.query(`update public.shops set status='suspended' where id=$1`, [shopB]);
+await as('authenticated', users.kawa);
+await db.query(`insert into public.favorite_shops (user_id, shop_id) values ($1,$2)`, [users.kawa, shopA]);
+const favs = (await db.query(`select * from public.my_favorite_shops()`)).rows;
+ok('customer saves a favourite shop', favs.length === 1 && favs[0].name === 'Ali Barber' && favs[0].slug === 'ali-barber', JSON.stringify(favs));
+await expectError('cannot save a favourite for another account', `insert into public.favorite_shops (user_id, shop_id) values ($1,$2)`, [users.ali, shopA], 'row-level security');
+await expectError('cannot save a closed shop', `insert into public.favorite_shops (user_id, shop_id) values ($1,$2)`, [users.kawa, shopB], 'row-level security');
+await expectError('same shop saved once', `insert into public.favorite_shops (user_id, shop_id) values ($1,$2)`, [users.kawa, shopA], 'duplicate key');
+await as('authenticated', users.ali);
+ok('shop owner cannot see who saved the shop', (await db.query(`select * from public.favorite_shops`)).rows.length === 0);
+ok('other accounts get their own (empty) list', (await db.query(`select * from public.my_favorite_shops()`)).rows.length === 0);
+await as('anon');
+await expectError('anon cannot read favourites', `select * from public.favorite_shops`, [], 'permission denied');
+await expectError('anon cannot list favourites', `select * from public.my_favorite_shops()`, [], 'permission denied');
+await as(null);
+await db.query(`update public.shops set status='suspended' where id=$1`, [shopA]);
+await as('authenticated', users.kawa);
+ok('a closed favourite is left out of the list', (await db.query(`select * from public.my_favorite_shops()`)).rows.length === 0);
+ok('but stays saved', (await db.query(`select * from public.favorite_shops`)).rows.length === 1);
+ok('customer removes a favourite', (await db.query(`delete from public.favorite_shops where shop_id=$1`, [shopA])).affectedRows === 1);
+await as(null);
+await db.query(`update public.shops set status=$2 where id=$1`, [shopA, statusA]);
+await db.query(`update public.shops set status=$2 where id=$1`, [shopB, statusB]);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

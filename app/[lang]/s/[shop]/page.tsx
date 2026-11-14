@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { CalendarPlus, ExternalLink, MapPin, Search, Share2 } from "lucide-react";
 import { getPublicShop, getShopContent, getShopReviews, isValidSlug } from "@/lib/shop-data";
@@ -11,6 +12,7 @@ import { Stars } from "@/components/ui/Stars";
 import { Divider, Heading, LogoRing } from "@/components/shop/theme";
 import { Carousel } from "@/components/shop/Carousel";
 import { BRAND, BrandIcon } from "@/components/shop/BrandIcon";
+import { FavoriteSlot } from "@/components/shop/FavoriteSlot";
 
 // Public shop home, in the zhewar home-page style: centred hero with the logo
 // in a rotating two-colour ring, red→blue divider, blue "book" + red "my
@@ -54,6 +56,13 @@ export default async function ShopHome({ params }: PageProps<"/[lang]/s/[shop]">
         )}
         <div className="pointer-events-none absolute -end-20 top-0 size-72 rounded-full opacity-[0.06] blur-3xl" style={{ background: "var(--shop-primary)" }} />
         <div className="pointer-events-none absolute -start-20 bottom-0 size-72 rounded-full opacity-[0.06] blur-3xl" style={{ background: "var(--shop-accent)" }} />
+
+        {/* Save the shop (customers); guests are sent to make a profile first. */}
+        <div className="absolute end-4 top-4 z-10">
+          <Suspense fallback={null}>
+            <FavoriteSlot shopId={shop.id} loginHref={mainSiteLink(base, href(`/account?next=${encodeURIComponent(`/s/${slug}`)}`))} />
+          </Suspense>
+        </div>
 
         <div className="relative mx-auto flex w-full max-w-xs flex-col items-center gap-4 text-center sm:max-w-sm sm:gap-5">
           <LogoRing logoUrl={p?.logo_url} kind={shop.kind} alt={shop.name} />

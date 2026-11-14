@@ -4,9 +4,9 @@ import { useEffect, useState, useTransition } from "react";
 import { Bell, BellOff } from "lucide-react";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { removePushSubscription, savePushSubscription, sendTestPush } from "@/app/[lang]/push-actions";
-import { enableNativePush, isNativeApp, nativeStatus } from "./native";
+import { enableNativePush, hasNativePush, isNativeApp, nativeStatus } from "./native";
 
-type Status = "loading" | "unsupported" | "ios-install" | "denied" | "off" | "on";
+type Status = "loading" | "unsupported" | "no-app-push" | "ios-install" | "denied" | "off" | "on";
 
 function keyBytes(base64: string): Uint8Array<ArrayBuffer> {
   const b64 = (base64 + "=".repeat((4 - (base64.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/");
@@ -20,14 +20,29 @@ async function registration() {
   return navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" });
 }
 
+/** dashboard = indigo admin look; customer = the red/blue customer pages, with customer texts. */
+type Tone = "dashboard" | "customer";
+const LOOK: Record<Tone, { card: string; primary: string; secondary: string; ghost: string; on: string; off: string; message: string }> = {
+  dashboard: {
+    card: "card", primary: "btn-primary", secondary: "btn-tonal", ghost: "btn-ghost",
+    on: "bg-emerald-50 text-emerald-600", off: "bg-slate-100 text-slate-500", message: "text-indigo-700",
+  },
+  customer: {
+    card: "card-shop", primary: "btn-shop w-auto px-5 py-3 text-sm", secondary: "btn-shop-accent w-auto px-5 py-3 text-sm",
+    ghost: "rounded-2xl border border-neutral-200 px-4 py-3 text-sm font-semibold text-neutral-600",
+    on: "bg-emerald-50 text-emerald-600", off: "bg-neutral-100 text-neutral-500", message: "text-neutral-900",
+  },
+};
+
 /**
  * Notifications on/off for this device. In the Android app it uses native
  * push (FCM); in a browser, Web Push. The server decides which alerts each
- * person gets (lib/push.ts).
+ * person gets (lib/push.ts). Hidden inside an app built without push.
  */
-export function PushAlerts({ publicKey }: { publicKey: string }) {
+export function PushAlerts({ publicKey, tone = "dashboard" }: { publicKey: string; tone?: Tone }) {
   const { t } = useI18n();
   const p = t.push;
+  const look = LOOK[tone];
   const [status, setStatus] = useState<Status>("loading");
   const [native, setNative] = useState(false);
   const [message, setMessage] = useState("");
@@ -37,6 +52,7 @@ export function PushAlerts({ publicKey }: { publicKey: string }) {
     let cancelled = false;
     const set = (s: Status) => !cancelled && setStatus(s);
     (async () => {
+      if (isNativeApp() && !hasNativePush()) return set("no-app-push");
       if (isNativeApp()) {
         if (!cancelled) setNative(true);
         const s = await nativeStatus();
@@ -108,7 +124,7 @@ export function PushAlerts({ publicKey }: { publicKey: string }) {
 
   const test = () =>
     start(async () => {
-      const res = await sendTestPush();
+      const res = await sendTestPush(tone === "customer" ? "/account" : "/dashboard");
       setMessage(res.message ?? "");
     });
 
@@ -116,29 +132,31 @@ export function PushAlerts({ publicKey }: { publicKey: string }) {
     status === "unsupported" ? p.unsupported
     : status === "ios-install" ? p.iosInstall
     : status === "denied" ? (native ? p.deniedApp : p.denied)
-    : status === "on" ? p.onHelp
-    : status === "off" ? p.offHelp
+    : status === "on" ? (tone === "customer" ? p.customerOnHelp : p.onHelp)
+    : status === "off" ? (tone === "customer" ? p.customerOffHelp : p.offHelp)
     : "";
 
+  if (status === "no-app-push") return null;
+
   return (
-    <section className="card flex flex-wrap items-center gap-4">
-      <span className={`grid size-11 shrink-0 place-items-center rounded-2xl ${status === "on" ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"}`}>
+    <section className={`${look.card} flex flex-wrap items-center gap-4`}>
+      <span className={`grid size-11 shrink-0 place-items-center rounded-2xl ${status === "on" ? look.on : look.off}`}>
         {status === "on" ? <Bell className="size-5" aria-hidden /> : <BellOff className="size-5" aria-hidden />}
       </span>
       <div className="min-w-48 flex-1">
         <h2 className="font-bold">{p.title}</h2>
         <p className="text-sm text-slate-600">{note || "…"}</p>
-        {message && <p className="mt-1 text-sm font-semibold text-indigo-700">{message}</p>}
+        {message && <p className={`mt-1 text-sm font-semibold ${look.message}`}>{message}</p>}
       </div>
       <div className="flex flex-wrap gap-2">
         {status === "off" && (
-          <button type="button" className="btn-primary" disabled={pending} onClick={turnOn}>{pending ? "…" : p.turnOn}</button>
+          <button type="button" className={look.primary} disabled={pending} onClick={turnOn}>{pending ? "…" : p.turnOn}</button>
         )}
         {status === "on" && (
           <>
-            <button type="button" className="btn-tonal" disabled={pending} onClick={test}>{pending ? "…" : p.test}</button>
+            <button type="button" className={look.secondary} disabled={pending} onClick={test}>{pending ? "…" : p.test}</button>
             {/* In the app, notifications are switched off in the phone's settings. */}
-            {!native && <button type="button" className="btn-ghost" disabled={pending} onClick={turnOff}>{p.turnOff}</button>}
+            {!native && <button type="button" className={look.ghost} disabled={pending} onClick={turnOff}>{p.turnOff}</button>}
           </>
         )}
       </div>

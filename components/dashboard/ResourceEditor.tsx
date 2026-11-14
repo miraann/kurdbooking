@@ -1,4 +1,5 @@
-import { Pencil, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { ChevronLeft, Pencil, Trash2 } from "lucide-react";
 import { canManage, requireShop } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { RESOURCES, type ResourceConfig, type ResourceKey } from "@/lib/resources";
@@ -15,7 +16,7 @@ import { AddTile, FormDialog } from "@/components/ui/FormDialog";
 export async function ResourceEditor({ resource }: { resource: ResourceKey }) {
   const cfg = RESOURCES[resource];
   const [{ shop, role }, i18n] = await Promise.all([requireShop(), getI18n()]);
-  const { lang, t } = i18n;
+  const { lang, t, href } = i18n;
   const supabase = await createClient();
   let query = supabase
     .from(cfg.table)
@@ -64,8 +65,14 @@ export async function ResourceEditor({ resource }: { resource: ResourceKey }) {
               {subtitle && <p className="truncate text-sm text-slate-500">{subtitle}</p>}
               {inactive && <p className="text-xs text-amber-700">{t.common.inactive}</p>}
             </div>
+            {editable && cfg.detail && (
+              <Link href={href(cfg.detail.href.replace("{id}", row.id))} className="btn-tonal mt-auto min-h-10 justify-between py-2">
+                {cfg.detail.label[lang]}
+                <ChevronLeft className="size-4 ltr:rotate-180" aria-hidden />
+              </Link>
+            )}
             {editable && (
-              <div className="mt-auto flex items-start gap-2 border-t border-slate-100 pt-3">
+              <div className={`flex items-start gap-2 border-t border-slate-100 pt-3 ${cfg.detail ? "" : "mt-auto"}`}>
                 <FormDialog
                   title={`${t.common.edit} · ${title}`}
                   triggerClassName="btn-tonal min-h-10 flex-1 py-2"

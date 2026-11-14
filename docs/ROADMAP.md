@@ -73,10 +73,11 @@ A separate app for customers (not the owner `/dashboard` app in `native/mobile`)
 - [x] Booking flow asks for a profile at the moment of booking (the last step signs up / logs in in place and keeps the chosen service/staff/time); `book/actions.ts` takes the customer from the session, not from the form
 - [x] "My bookings" in `/account`: upcoming and past bookings across all shops, with status (چاوەڕوان / پەسەندکراوە / هەڵوەشاوە / تەواوبوو / نەهات), each opening its receipt
 - [x] Customer cancels their own upcoming booking (`cancel_my_appointment`, push to the shop)
-- [ ] Open a shop by link/QR, saved favourite shops
+- [ ] Open a shop by link/QR in the app (Android App Links)
+- [x] **Favourite shops** (`0013_favorites.sql`): heart on the shop page, «دوکانە دڵخوازەکانم» in `/account` and at the top of the home page
 - [ ] **Block a customer** (per shop) — *done on the shop side*: database rule, Block/Unblock in the bookings list (shown for no-shows and after 2+ no-shows), blocked badge, clear message on the booking page. Still needed: the customer app side. owner blocks a customer account from the booking list; a blocked customer can't book at that shop (checked in `book/actions.ts` and by the database). The dashboard suggests blocking after 2–3 no-shows (نەهات). Unblock any time
-- [ ] **Ratings & reviews** — *done on the shop side*: Dashboard → Reviews (reply once), rating + reviews on the public shop page, hide/show in `/super`. Still needed: the writing screen in the customer app. only for a booking marked تەواوبوو, one per booking, 1–5 stars + optional text. Average and count on the shop card and shop page. The owner can reply once; `/super` can hide abusive reviews (owners can't delete reviews)
-- [ ] Push to customers when status changes (confirmed, declined, reminder)
+- [x] **Ratings & reviews**: the customer rates a booking marked تەواوبوو from `/account` (once, 1–5 stars + optional text; the shop gets a push). Dashboard → Reviews (reply once), rating + reviews on the public shop page and the shop list, hide/show in `/super`. Owners can't delete reviews
+- [x] **Push to customers** (`lib/customer-push.ts`): confirmed, declined, cancelled by the shop, «rate your visit» after تەواوبوو, and a reminder the day before (`/api/cron/reminders`, daily Vercel cron, `0014_reminders.sql`). Works in browsers (alerts card in `/account`); the customer Android app needs its own Firebase registration first (see Phase 5)
 - [x] Capacitor project for the customer app: `native/customer` (`com.kurdbooking.app`, opens `/`, blue→red icon), signed APK served at `/kurdbooking.apk` with a download link on the customer pages (browsers only)
 - [ ] Customer app: final icon (Android 7 still shows the owner app's indigo PNGs), iOS project, store listing
 - [x] Device-saved "my bookings" removed (`/s/<slug>/my-bookings` redirects to `/account`)
@@ -86,17 +87,17 @@ A separate app for customers (not the owner `/dashboard` app in `native/mobile`)
 - [ ] **Waitlist**: when a day is full, a logged-in customer joins the waitlist for that day (and optional service/staff). When a booking is cancelled, everyone waiting gets a push; the first to book gets the slot (no holding). Needs customer accounts and push first
 - [x] **Password reset**: `/forgot-password` emails a link; `/super` → shop → «Owner's password» makes a one-time link to send on WhatsApp (no email needed); both open `/auth/confirm` → `/reset-password`. Logged in: Settings → change password (asks for the current one; dashboard and `/super`). Real emails to owners need SMTP in Supabase (README → Setup step 6)
 - [ ] Staff accounts: invite a barber/stylist to log in with role `staff`
-- [ ] Choose which staff do which service (`staff_services` exists; needs an editor)
-- [ ] Per-staff working hours and days off (the tables support it; needs an editor)
+- [x] **Which staff do which service**: Staff → «خزمەتگوزاری و کاتی کار» (`/dashboard/staff/<id>`); all on = every service, new ones too
+- [x] **Per-staff working hours** on the same page (own week, or back to the shop's hours); per-staff days off and closed hours are in Schedule («بۆ کێ»)
 - [ ] Post preview: paste a link, auto-fill the image (port zhewar `app/api/fb-preview` with its SSRF guard)
 - [ ] Optional face scan and Facebook link at booking (zhewar features), as shop settings
 - [x] **Rate limits** in the database instead of Upstash (`0012_rate_limits.sql`, `lib/rate-limit.ts`): bookings 8 per IP per 10 min, `/signup` orders 5 per hour, both logins 10 per 10 min, reset emails 5 per hour, password change 5 per 10 min per account. Plus the old rule: 3 future bookings per phone
-- [ ] Reminder the day before (WhatsApp link list, or SMS later)
+- [x] **Reminder the day before**: push to customers (above), plus Bookings → «سبەی» in the dashboard with a WhatsApp reminder button per customer (SMS later)
 - [ ] Old-photo cleanup job for storage (zhewar `scripts/cleanup-orphan-storage.mts`)
 - [x] **Security headers**: CSP (scripts, frames and connections only from our site, images from Supabase Storage), HSTS, nosniff, frame and referrer rules (`next.config.ts`)
 - [ ] Online payment: FIB or ZainCash API → `record_payment` automatically
 - [ ] Shops' own domains (`shops.custom_domain` exists; needs Vercel Domains API + proxy lookup)
 - [x] **Three languages: Kurdish Sorani (default), Arabic, English.** Dictionaries in `lib/i18n/dictionaries`, pages under `app/[lang]`, `/ar/…` and `/en/…` URLs, picker on the platform header, shop page, dashboard and `/super`, per-language digits/dates/times, Kurdish and Arabic fonts. Arabic and English texts need a review by a native speaker
-- [ ] Customer app: language picker (it remembers the choice like the website does)
+- [x] Customer app: language picker in the header of the shop list (the `kb_lang` cookie keeps the choice, like the website)
 - [ ] Optional Arabic/English fields for shop content the owner types (service names, about)
 - [ ] Stats for owners (bookings per week, top services, no-shows)

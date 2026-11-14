@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { ExternalLink, LogOut } from "lucide-react";
 import { requireShop } from "@/lib/auth";
 import { shopUrl } from "@/lib/tenant";
@@ -11,6 +12,7 @@ import { signOut, switchShop } from "@/app/[lang]/dashboard/actions";
  * subscription status. Reads the session → lives inside <Suspense>.
  */
 export async function ShopGate({ children }: { children: React.ReactNode }) {
+  await connection(); // "days left" below reads the current time: never prerender (not even a runtime prefetch)
   const [{ shop, shops }, { t, f, href }] = await Promise.all([requireShop(), getI18n()]);
   const g = t.dashboard.gate;
   const publicUrl = shopUrl(shop.slug);

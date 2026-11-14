@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import type { Metadata } from "next";
-import { CalendarDays, ChevronLeft, Clock, LogOut, UserRound } from "lucide-react";
+import { CalendarDays, ChevronLeft, Clock, Heart, LogOut, UserRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getViewer, type Customer } from "@/lib/customer";
 import { displayPhone } from "@/lib/format";
@@ -11,8 +11,10 @@ import { tx } from "@/lib/i18n/config";
 import { APPOINTMENT_STATUS } from "@/lib/labels";
 import type { AppointmentStatus } from "@/lib/types";
 import { Heading, LogoRing, RING } from "@/components/shop/theme";
+import { Stars } from "@/components/ui/Stars";
 import { CustomerAuth } from "./CustomerAuth";
 import { CancelBooking } from "./CancelBooking";
+import { ReviewForm } from "./ReviewForm";
 import { customerLogout } from "./actions";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -63,6 +65,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/[lang]/a
     <main className="mx-auto max-w-2xl px-5 pt-12">
       <Heading as="h1" eyebrow="PROFILE" title={a.title} />
       <ProfileCard customer={viewer.customer} />
+      <MyFavorites />
       <MyBookings />
     </main>
   );
@@ -94,8 +97,57 @@ async function ProfileCard({ customer }: { customer: Customer }) {
   );
 }
 
+interface FavoriteShop {
+  id: string;
+  slug: string;
+  name: string;
+  logo_url: string | null;
+  kind: "barber" | "salon" | "both";
+  rating_avg: number | string | null;
+  rating_count: number;
+}
+
+/** Saved shops (the heart on a shop page), as a row of logo chips. */
+async function MyFavorites() {
+  const supabase = await createClient();
+  const [{ data }, { t, f, href }] = await Promise.all([supabase.rpc("my_favorite_shops"), getI18n()]);
+  const a = t.account;
+  const shops = (data ?? []) as FavoriteShop[];
+  return (
+    <section className="mt-10">
+      <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-neutral-900">
+        <Heart className="size-5" color="#ef4444" fill="#ef4444" aria-hidden /> {a.favorites}
+      </h2>
+      {shops.length === 0 ? (
+        <p className="card-shop text-sm text-neutral-500">{a.noFavorites}</p>
+      ) : (
+        <ul className="-mx-5 flex snap-x gap-3 overflow-x-auto px-5 pb-2 scrollbar-hide">
+          {shops.map((s) => (
+            <li key={s.id} className="w-32 shrink-0 snap-start">
+              <Link
+                href={href(`/s/${s.slug}`)}
+                className="flex h-full flex-col items-center gap-2 rounded-3xl border border-neutral-100 bg-white p-3 text-center shadow-sm"
+              >
+                <LogoRing logoUrl={s.logo_url} kind={s.kind} className="size-16" iconClassName="size-6" spin={false} />
+                <span className="line-clamp-2 text-sm font-bold leading-tight text-neutral-900">{s.name}</span>
+                {s.rating_avg != null && s.rating_count > 0 && (
+                  <span className="flex items-center gap-1 text-[0.7rem] text-neutral-500">
+                    <Stars rating={Number(s.rating_avg)} className="size-3" />
+                    {f.num(Number(s.rating_avg).toFixed(1))}
+                  </span>
+                )}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 interface MyAppointment {
   id: string;
+  shop_id: string;
   shop_slug: string;
   shop_name: string;
   shop_logo_url: string | null;
@@ -105,6 +157,8 @@ interface MyAppointment {
   status: AppointmentStatus;
   public_token: string;
   can_cancel: boolean;
+  can_review: boolean;
+  my_rating: number | null;
 }
 
 // Every shop is in Sulaimani for now (one time zone).
@@ -147,7 +201,7 @@ async function MyBookings() {
 }
 
 async function BookingList({ title, rows }: { title: string; rows: MyAppointment[] }) {
-  const { lang, f, href } = await getI18n();
+  const { lang, t, f, href } = await getI18n();
   return (
     <section className="mt-10">
       <h2 className="mb-4 text-lg font-bold text-neutral-900">{title}</h2>
@@ -178,6 +232,18 @@ async function BookingList({ title, rows }: { title: string; rows: MyAppointment
               {r.can_cancel && (
                 <div className="mt-3 flex justify-end border-t border-neutral-100 pt-3">
                   <CancelBooking id={r.id} />
+                </div>
+              )}
+              {r.can_review && (
+                <div className="mt-3 flex border-t border-neutral-100 pt-3">
+                  <ReviewForm id={r.id} shopName={r.shop_name} />
+                </div>
+              )}
+              {r.my_rating != null && (
+                <div className="mt-3 flex items-center gap-2 border-t border-neutral-100 pt-3 text-xs text-neutral-500">
+                  {t.account.yourRating}
+                  <Stars rating={r.my_rating} className="size-3.5" />
+                  <span className="sr-only">{f.num(r.my_rating)}/5</span>
                 </div>
               )}
             </li>

@@ -36,6 +36,8 @@ export interface ResourceConfig {
   check?: (row: Record<string, unknown>) => keyof Dict["errors"] | null;
   /** Plan column that caps how many rows a shop may have. */
   limit?: "max_staff" | "max_gallery_photos" | "max_locations";
+  /** A page with more settings for one row ("{id}" is replaced), linked from its card. */
+  detail?: { href: string; label: T3 };
 }
 
 // Labels used by several lists.
@@ -89,6 +91,7 @@ export const RESOURCES: Record<ResourceKey, ResourceConfig> = {
     imageField: "photo_url",
     orderBy: { column: "sort_order", ascending: true },
     limit: "max_staff",
+    detail: { href: "/dashboard/staff/{id}", label: { ckb: "خزمەتگوزاری و کاتی کار", ar: "الخدمات وأوقات العمل", en: "Services and hours" } },
     fields: [
       { name: "name", label: L.name, type: "text", required: true, maxLength: 80 },
       { name: "title", label: { ckb: "پلە / ناونیشان", ar: "المسمى", en: "Job title" }, type: "text", maxLength: 60, placeholder: { ckb: "بۆ نموونە: وەستا", ar: "مثلاً: أسطة", en: "e.g. Master barber" } },

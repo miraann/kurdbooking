@@ -2,7 +2,9 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { refresh, updateTag } from "next/cache";
+import { z } from "zod";
 import { CURRENT_SHOP_COOKIE, requireShop, getShopContext } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -18,6 +20,8 @@ import { getActionI18n } from "@/lib/i18n/request";
 import type { Lang } from "@/lib/i18n/config";
 import { DICTS } from "@/lib/i18n/dictionaries";
 import type { AppointmentStatus } from "@/lib/types";
+import { sendPush } from "@/lib/push";
+import { customerEvent, customerMessage, type BookingForPush } from "@/lib/customer-push";
 
 // Every action re-checks the user and their role (requireShop) and scopes
 // every query by shop_id. RLS enforces the same rules again in the database.
@@ -156,35 +160,107 @@ export async function saveAppListing(_prev: ActionState, formData: FormData): Pr
   return saved(lang);
 }
 
-// ── Weekly hours ───────────────────────────────────────────────────────────
+// ── Weekly hours (the shop's, or one staff member's own) ──────────────────
 
 const TIME = /^\d{2}:\d{2}$/;
 
+/** Writes the 7 days of a submitted <HoursForm>. staffId null = the shop's hours. */
+async function writeWeek(supabase: Awaited<ReturnType<typeof createClient>>, shopId: string, staffId: string | null, formData: FormData, lang: Lang) {
+  const t = DICTS[lang];
+  for (let d = 0; d < 7; d++) {
+    const isOpen = formData.has(`open_${d}`);
+    const open = String(formData.get(`from_${d}`) ?? "");
+    const close = String(formData.get(`to_${d}`) ?? "");
+    const bs = String(formData.get(`bstart_${d}`) ?? "");
+    const be = String(formData.get(`bend_${d}`) ?? "");
+    if (!TIME.test(open) || !TIME.test(close) || close <= open) throw new FieldError(t.errors.hours);
+    const hasBreak = TIME.test(bs) && TIME.test(be);
+    if (hasBreak && (be <= bs || bs < open || be > close)) throw new FieldError(t.errors.breakHours);
+
+    const row = { is_open: isOpen, open_time: open, close_time: close, break_start: hasBreak ? bs : null, break_end: hasBreak ? be : null };
+    let update = supabase.from("working_hours").update(row).eq("shop_id", shopId).eq("day_of_week", d);
+    update = staffId ? update.eq("staff_id", staffId) : update.is("staff_id", null);
+    const { data, error } = await update.select("id");
+    if (error) throw error;
+    if (!data?.length) {
+      const { error: insertError } = await supabase.from("working_hours").insert({ ...row, shop_id: shopId, staff_id: staffId, day_of_week: d });
+      if (insertError) throw insertError;
+    }
+  }
+}
+
 export async function saveHours(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { lang } = await getActionI18n();
+  const { shop } = await requireShop(["owner", "manager"]);
+  const supabase = await createClient();
+  try {
+    await writeWeek(supabase, shop.id, null, formData, lang);
+  } catch (e) {
+    return { ok: false, message: userMessage(e, lang), nonce: Date.now() };
+  }
+  afterChange(shop.id);
+  return saved(lang);
+}
+
+// ── One staff member: own hours and the services they do ───────────────────
+
+/** The staff row, only if it belongs to this shop (never trust the id from the browser). */
+async function shopStaff(supabase: Awaited<ReturnType<typeof createClient>>, shopId: string, staffId: string) {
+  if (!z.uuid().safeParse(staffId).success) return null;
+  const { data } = await supabase.from("staff").select("id, name, user_id").eq("shop_id", shopId).eq("id", staffId).maybeSingle();
+  return data as { id: string; name: string; user_id: string | null } | null;
+}
+
+/** Saves a staff member's own week: from now on the shop's hours don't apply to them. */
+export async function saveStaffHours(staffId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   const { lang, t } = await getActionI18n();
   const { shop } = await requireShop(["owner", "manager"]);
   const supabase = await createClient();
   try {
-    for (let d = 0; d < 7; d++) {
-      const isOpen = formData.has(`open_${d}`);
-      const open = String(formData.get(`from_${d}`) ?? "");
-      const close = String(formData.get(`to_${d}`) ?? "");
-      const bs = String(formData.get(`bstart_${d}`) ?? "");
-      const be = String(formData.get(`bend_${d}`) ?? "");
-      if (!TIME.test(open) || !TIME.test(close) || close <= open) throw new FieldError(t.errors.hours);
-      const hasBreak = TIME.test(bs) && TIME.test(be);
-      if (hasBreak && (be <= bs || bs < open || be > close)) throw new FieldError(t.errors.breakHours);
+    if (!(await shopStaff(supabase, shop.id, staffId))) throw new FieldError(t.common.unknown);
+    await writeWeek(supabase, shop.id, staffId, formData, lang);
+  } catch (e) {
+    return { ok: false, message: userMessage(e, lang), nonce: Date.now() };
+  }
+  afterChange(shop.id);
+  return saved(lang);
+}
 
-      const row = { is_open: isOpen, open_time: open, close_time: close, break_start: hasBreak ? bs : null, break_end: hasBreak ? be : null };
-      const { data, error } = await supabase
-        .from("working_hours").update(row)
-        .eq("shop_id", shop.id).is("staff_id", null).eq("day_of_week", d)
-        .select("id");
-      if (error) throw error;
-      if (!data?.length) {
-        const { error: insertError } = await supabase.from("working_hours").insert({ ...row, shop_id: shop.id, day_of_week: d });
-        if (insertError) throw insertError;
-      }
+/** Drops a staff member's own week, so they follow the shop's hours again. */
+export async function followShopHours(staffId: string): Promise<ActionState> {
+  const { lang, t } = await getActionI18n();
+  const { shop } = await requireShop(["owner", "manager"]);
+  const supabase = await createClient();
+  if (!(await shopStaff(supabase, shop.id, staffId))) return { ok: false, message: t.common.unknown };
+  const { error } = await supabase.from("working_hours").delete().eq("shop_id", shop.id).eq("staff_id", staffId);
+  if (error) return { ok: false, message: userMessage(error, lang) };
+  afterChange(shop.id);
+  return { ok: true };
+}
+
+/**
+ * Which services a staff member does. The form has one switch per service
+ * (svc_<id>). All on = no rows (they do every service, new ones included).
+ */
+export async function saveStaffServices(staffId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { lang, t } = await getActionI18n();
+  const { shop } = await requireShop(["owner", "manager"]);
+  const supabase = await createClient();
+  try {
+    if (!(await shopStaff(supabase, shop.id, staffId))) throw new FieldError(t.common.unknown);
+    const { data: services, error } = await supabase.from("services").select("id").eq("shop_id", shop.id);
+    if (error) throw error;
+    const all = (services ?? []).map((s) => s.id as string);
+    const chosen = all.filter((id) => formData.has(`svc_${id}`));
+    if (all.length > 0 && chosen.length === 0) throw new FieldError(t.dashboard.staffDetail.needOne);
+
+    const { error: deleteError } = await supabase.from("staff_services").delete().eq("shop_id", shop.id).eq("staff_id", staffId);
+    if (deleteError) throw deleteError;
+    if (chosen.length < all.length) {
+      const { error: insertError } = await supabase
+        .from("staff_services")
+        .insert(chosen.map((service_id) => ({ shop_id: shop.id, staff_id: staffId, service_id })));
+      if (insertError) throw insertError;
     }
   } catch (e) {
     return { ok: false, message: userMessage(e, lang), nonce: Date.now() };
@@ -202,8 +278,26 @@ export async function setAppointmentStatus(id: string, status: AppointmentStatus
   if (!STATUSES.includes(status)) return { ok: false, message: t.errors.badStatus };
   const { shop } = await requireShop();
   const supabase = await createClient();
+  const { data: before } = await supabase
+    .from("appointments")
+    .select("status, starts_at, service_name, public_token, customers(user_id)")
+    .eq("id", id)
+    .eq("shop_id", shop.id)
+    .maybeSingle();
+  if (!before) return { ok: false, message: t.common.unknown };
   const { error } = await supabase.from("appointments").update({ status }).eq("id", id).eq("shop_id", shop.id);
   if (error) return { ok: false, message: userMessage(error, lang) };
+
+  // Tell the customer (their profile's devices), after the owner has the answer.
+  const userId = (before.customers as unknown as { user_id: string | null } | null)?.user_id;
+  const event = customerEvent(before.status as AppointmentStatus, status);
+  if (userId && event) {
+    const booking: BookingForPush = {
+      id, token: before.public_token, shopName: shop.name, shopSlug: shop.slug, timeZone: shop.timezone,
+      service: before.service_name, startsAt: before.starts_at,
+    };
+    after(() => sendPush([userId], customerMessage(event, booking)).catch((err) => console.error("customer push failed", err)));
+  }
   refresh();
   return { ok: true };
 }

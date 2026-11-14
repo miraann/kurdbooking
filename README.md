@@ -94,6 +94,7 @@ Online payment (FIB / ZainCash APIs) is in the roadmap. Stripe doesn't work in I
 1. Push the project to GitHub and import it in Vercel.
 2. Add the variables from `.env.local` in **Settings → Environment Variables**, and set `NEXT_PUBLIC_SITE_URL` to the Vercel address.
 3. Deploy. Shops live at `https://<project>.vercel.app/s/<slug>` until you have a domain.
+4. Add `CRON_SECRET` (any long random string) for the day-before reminders. `vercel.json` runs `/api/cron/reminders` every day at 15:00 UTC (18:00 in Iraq): customers with a confirmed booking tomorrow get a push on the devices where they turned alerts on (**/account**). Vercel sends the secret by itself; other callers are refused.
 
 `vercel.json` pins the framework to Next.js, and `.vercelignore` leaves `native/` out of the upload. Keep both: without them Vercel finds the Rust crate in `native/windows/src-tauri` and tries to build the Windows app, which fails on Linux (`gdk-3.0` not found).
 

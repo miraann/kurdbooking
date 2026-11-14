@@ -62,14 +62,15 @@ export async function removePushSubscription(endpoint: string): Promise<ActionSt
   return { ok: true };
 }
 
-/** A test alert to all of your devices. */
-export async function sendTestPush(): Promise<ActionState> {
+/** A test alert to all of your devices; tapping it opens `to` (the dashboard, or a customer's profile). */
+export async function sendTestPush(to: "/dashboard" | "/account" = "/dashboard"): Promise<ActionState> {
   const { t } = await getActionI18n();
   const user = await requireUser();
+  const path = to === "/account" ? "/account" : "/dashboard";
   const { sent } = await sendPush([user.id], (lang) => ({
     title: DICTS[lang].push.testTitle,
     body: DICTS[lang].push.testBody,
-    url: localePath(lang, "/dashboard"),
+    url: localePath(lang, path),
     tag: "test",
   }));
   return sent ? { ok: true, message: t.push.testSent } : { ok: false, message: t.push.testFailed };

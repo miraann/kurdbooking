@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { after } from "next/server";
-import { refresh } from "next/cache";
+import { refresh, updateTag } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -10,6 +10,7 @@ import { customerEmail, getViewer, isCustomerMeta } from "@/lib/customer";
 import { allowAttempt } from "@/lib/rate-limit";
 import { displayPhone, fill, fmt, normalizePhone } from "@/lib/format";
 import { notifyShop } from "@/lib/push";
+import { LISTED_SHOPS_TAG, shopTag } from "@/lib/shop-data";
 import { DICTS } from "@/lib/i18n/dictionaries";
 import { getActionI18n } from "@/lib/i18n/request";
 import { localePath, splitLocale } from "@/lib/i18n/config";
@@ -135,5 +136,46 @@ export async function cancelMyBooking(id: string): Promise<{ ok: boolean; messag
     });
   }
   refresh(); // the list shows the new status
+  return { ok: true };
+}
+
+/**
+ * The customer rates a completed visit, once (checked by submit_review). The
+ * stars show on the shop page and the shop list at once; the shop gets a push.
+ */
+export async function submitMyReview(id: string, rating: number, body: string): Promise<{ ok: boolean; message?: string }> {
+  const { t } = await getActionI18n();
+  const e = t.account.errors;
+  const viewer = await getViewer();
+  if (viewer.kind !== "customer") return { ok: false, message: t.booking.errors.loginRequired };
+  const parsed = z
+    .object({ id: z.uuid(), rating: z.number().int().min(1).max(5), body: z.string().trim().max(1000) })
+    .safeParse({ id, rating, body });
+  if (!parsed.success) return { ok: false, message: e.pickRating };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .rpc("submit_review", { p_appointment_id: parsed.data.id, p_rating: parsed.data.rating, p_body: parsed.data.body || null })
+    .single();
+  if (error || !data) {
+    const msg = String(error?.message ?? "");
+    return { ok: false, message: msg.includes("already_reviewed") ? e.alreadyReviewed : e.reviewFailed };
+  }
+  const review = data as { id: string; shop_id: string; rating: number; body: string | null; reviewer_name: string };
+
+  updateTag(shopTag(review.shop_id)); // rating + review on the shop page
+  updateTag(LISTED_SHOPS_TAG); // rating on the shop list
+  after(() =>
+    notifyShop(review.shop_id, null, (lang) => {
+      const p = DICTS[lang].push;
+      return {
+        title: fill(p.newReviewTitle, { stars: "★".repeat(review.rating) }),
+        body: fill(p.newReviewBody, { name: review.reviewer_name || viewer.customer.name, text: review.body ?? "" }).trim(),
+        url: localePath(lang, "/dashboard/reviews"),
+        tag: `review-${review.id}`,
+      };
+    }).catch((err) => console.error("review push failed", err)),
+  );
+  refresh();
   return { ok: true };
 }

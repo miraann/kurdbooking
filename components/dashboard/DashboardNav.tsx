@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { splitLocale } from "@/lib/i18n/config";
@@ -7,10 +8,27 @@ import { DASHBOARD_LINKS, MORE_LINK } from "@/components/dashboard/links";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { LanguageSwitcher } from "@/components/i18n/LanguageSwitcher";
 
+/**
+ * Sidebar (desktop) and pill tab bar (phones). The active link comes from the
+ * URL, which isn't known while prerendering a page with an unknown [id]
+ * (e.g. /dashboard/staff/<id>): there the nav first renders without a
+ * highlight and streams in (Cache Components rule for usePathname).
+ */
 export function DashboardNav() {
+  return (
+    <Suspense fallback={<NavView pathname={null} />}>
+      <NavAtPath />
+    </Suspense>
+  );
+}
+
+function NavAtPath() {
+  return <NavView pathname={splitLocale(usePathname()).path} />; // without /ar or /en
+}
+
+function NavView({ pathname }: { pathname: string | null }) {
   const { lang, href } = useI18n();
-  const pathname = splitLocale(usePathname()).path; // without /ar or /en
-  const isActive = (to: string) => (to === "/dashboard" ? pathname === to : pathname.startsWith(to));
+  const isActive = (to: string) => pathname !== null && (to === "/dashboard" ? pathname === to : pathname.startsWith(to));
   const tabs = [...DASHBOARD_LINKS.filter((l) => l.tab), MORE_LINK];
   // On a section that isn't in the tab bar, light up «زیاتر».
   const onTab = tabs.some((t) => t.href !== MORE_LINK.href && isActive(t.href));
@@ -51,7 +69,7 @@ export function DashboardNav() {
       >
         <div className="flex items-center gap-0.5 p-1.5">
           {tabs.map(({ href: to, short, icon: Icon }) => {
-            const active = to === MORE_LINK.href ? !onTab : isActive(to);
+            const active = to === MORE_LINK.href ? pathname !== null && !onTab : isActive(to);
             return (
               <Link
                 key={to}

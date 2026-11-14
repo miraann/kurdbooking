@@ -1,9 +1,10 @@
 import { connection } from "next/server";
 import Link from "next/link";
-import { Ban, MessageCircle, Phone } from "lucide-react";
+import { Ban, BellRing, MessageCircle, Phone } from "lucide-react";
 import { canManage, requireShop } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { shopUrl } from "@/lib/tenant";
+import { addDays, todayKey, zonedToUtc } from "@/lib/booking";
 import { displayPhone, fill, fillTemplate, whatsappLink } from "@/lib/format";
 import { getI18n } from "@/lib/i18n/server";
 import { APPOINTMENT_STATUS } from "@/lib/labels";
@@ -11,10 +12,11 @@ import type { Appointment, AppointmentStatus, WhatsAppTemplate } from "@/lib/typ
 import { setAppointmentStatus, setCustomerBlocked } from "@/app/[lang]/dashboard/actions";
 import { ActionButton } from "@/components/ui/ActionButton";
 
-const VIEWS = ["upcoming", "pending", "past"] as const;
+const VIEWS = ["upcoming", "pending", "tomorrow", "past"] as const;
 type View = (typeof VIEWS)[number];
 
 type Row = Appointment & {
+  reminded_at: string | null;
   customers: { id: string; full_name: string; phone: string; blocked_at: string | null } | null;
   staff: { name: string } | null;
 };
@@ -29,7 +31,7 @@ const STATUS_STYLE: Record<AppointmentStatus, string> = {
 
 export default async function AppointmentsPage({ searchParams }: PageProps<"/[lang]/dashboard/appointments">) {
   const { view: rawView } = await searchParams;
-  const view: View = rawView === "pending" || rawView === "past" ? rawView : "upcoming";
+  const view: View = VIEWS.find((v) => v === rawView) ?? "upcoming";
   await connection(); // uses the current time below, so never prerender this page
   const [{ shop, role }, { lang, t, f, href }] = await Promise.all([requireShop(), getI18n()]);
   const manager = canManage(role);
@@ -43,7 +45,15 @@ export default async function AppointmentsPage({ searchParams }: PageProps<"/[la
     .eq("shop_id", shop.id)
     .limit(200);
   if (view === "past") query = query.lt("starts_at", now).order("starts_at", { ascending: false });
-  else {
+  else if (view === "tomorrow") {
+    // Tomorrow in the shop's time zone, for the day-before WhatsApp reminders.
+    const day = addDays(todayKey(shop.timezone), 1);
+    query = query
+      .gte("starts_at", zonedToUtc(day, "00:00", shop.timezone).toISOString())
+      .lt("starts_at", zonedToUtc(addDays(day, 1), "00:00", shop.timezone).toISOString())
+      .in("status", ["pending", "confirmed"])
+      .order("starts_at", { ascending: true });
+  } else {
     query = query.gte("starts_at", now).order("starts_at", { ascending: true });
     query = view === "pending" ? query.eq("status", "pending") : query.in("status", ["pending", "confirmed"]);
   }
@@ -80,13 +90,15 @@ export default async function AppointmentsPage({ searchParams }: PageProps<"/[la
     <div className="space-y-5">
       <h1 className="page-title">{ta.title}</h1>
 
-      <nav className="flex gap-2">
+      <nav className="flex flex-wrap gap-2">
         {VIEWS.map((v) => (
           <Link key={v} href={href(`/dashboard/appointments?view=${v}`)} className={v === view ? "btn-primary px-3 py-1.5" : "btn-ghost px-3 py-1.5"}>
             {ta[v]}
           </Link>
         ))}
       </nav>
+
+      {view === "tomorrow" && <p className="text-sm text-slate-500">{ta.tomorrowHelp}</p>}
 
       {groups.size === 0 && <p className="card text-center text-sm text-slate-500">{ta.empty}</p>}
 
@@ -124,8 +136,15 @@ export default async function AppointmentsPage({ searchParams }: PageProps<"/[la
                     </p>
                     {a.customer_note && <p className="mt-1 text-sm text-slate-600">«{a.customer_note}»</p>}
                   </div>
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_STYLE[a.status]}`}>
-                    {APPOINTMENT_STATUS[a.status][lang]}
+                  <span className="flex flex-col items-end gap-1">
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_STYLE[a.status]}`}>
+                      {APPOINTMENT_STATUS[a.status][lang]}
+                    </span>
+                    {a.reminded_at && a.status === "confirmed" && (
+                      <span className="inline-flex items-center gap-1 text-xs text-slate-400">
+                        <BellRing className="size-3" aria-hidden /> {ta.reminded}
+                      </span>
+                    )}
                   </span>
                 </div>
 
@@ -167,7 +186,7 @@ export default async function AppointmentsPage({ searchParams }: PageProps<"/[la
                         rel="noreferrer"
                         className="btn-ghost px-3 py-1.5 text-emerald-700"
                       >
-                        <MessageCircle className="size-4" aria-hidden /> {t.common.whatsapp}
+                        <MessageCircle className="size-4" aria-hidden /> {view === "tomorrow" ? ta.remind : t.common.whatsapp}
                       </a>
                     </span>
                   )}

@@ -15,9 +15,11 @@ const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : "");
 export function HoursForm({
   hours,
   action,
+  saveLabel,
 }: {
   hours: WorkingHours[];
   action: (s: ActionState, fd: FormData) => Promise<ActionState>;
+  saveLabel?: string;
 }) {
   const { t, f } = useI18n();
   const h = t.dashboard.hours;
@@ -46,7 +48,7 @@ export function HoursForm({
         );
       })}
       {state.message && <p className={state.ok ? "text-sm text-emerald-700" : "text-sm text-rose-700"}>{state.message}</p>}
-      <SubmitButton>{h.save}</SubmitButton>
+      <SubmitButton>{saveLabel ?? h.save}</SubmitButton>
     </form>
   );
 }
