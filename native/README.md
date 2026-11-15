@@ -171,4 +171,8 @@ The installers land in `src-tauri/target/release/bundle/` (`nsis/*.exe`, `msi/*.
 
 Icons are already generated in `src-tauri/icons/`. After changing `native/icon.svg`, run `npm run icons` again.
 
-Windows notifications for new bookings come later: add `tauri-plugin-notification` and allow the site in `src-tauri/capabilities/default.json`.
+### Notifications (app 0.2)
+
+WebView2 has no Web Push, so the app does not use the browser push. The window's user agent ends in `KurdBookingDesktop/…` (`tauri.conf.json`); the site sees it and, while the dashboard is open, asks the server every 30 seconds for new bookings (`pollNewBookings`, `components/push/DesktopAlerts.tsx`) and shows each one as a Windows notification. Settings has a card to allow notifications and send a test. **Keep the window open** (minimized is fine); closing it stops the alerts. Needs no Rust change, so it was written without a Windows build and has not been run yet: build, then check the card in Settings, make a test booking and watch for the toast.
+
+Later, if closing the window must not stop alerts: a tray icon that hides the window instead (Tauri `tray-icon` feature) and autostart (`tauri-plugin-autostart`).

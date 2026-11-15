@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Bell, BellOff } from "lucide-react";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { removePushSubscription, savePushSubscription, sendTestPush } from "@/app/[lang]/push-actions";
+import { isDesktopApp } from "./DesktopAlerts";
 import { enableNativePush, hasNativePush, isNativeApp, nativeStatus } from "./native";
 
 type Status = "loading" | "unsupported" | "no-app-push" | "ios-install" | "denied" | "off" | "on";
@@ -52,6 +53,8 @@ export function PushAlerts({ publicKey, tone = "dashboard" }: { publicKey: strin
     let cancelled = false;
     const set = (s: Status) => !cancelled && setStatus(s);
     (async () => {
+      // The Windows app has no Web Push: DesktopAlerts shows its own card and polls instead.
+      if (isDesktopApp()) return set("no-app-push");
       if (isNativeApp() && !hasNativePush()) return set("no-app-push");
       if (isNativeApp()) {
         if (!cancelled) setNative(true);

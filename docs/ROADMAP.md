@@ -43,7 +43,7 @@ Status as of 2026-11-14: phases 1–4 are built and live on Vercel (https://kurd
 - [x] Push to owners/managers (and the booked staff member) on new bookings: browser push + Android app (FCM, Firebase project `kurdbooking`, `google-services.json` in `native/mobile/android/app`). Needs `FIREBASE_SERVICE_ACCOUNT` on Vercel for the app
 - [ ] iOS push: needs an Apple Developer account, then an APNs key uploaded to Firebase and `GoogleService-Info.plist`
 - [x] Browser push (Web Push, `lib/push.ts`, `public/sw.js`, tables `push_subscriptions` / `push_keys`): the super admin gets an alert for each new `/signup` order
-- [ ] Windows notifications (tauri-plugin-notification), or reuse the browser push above for owners
+- [x] **Windows notifications** (app 0.2): WebView2 has no Web Push, so the app's user agent marks it and the open dashboard checks for new bookings every 30 s (`pollNewBookings`) and shows Windows toasts; Settings card. Needs the window kept open. Written without Rust installed here, so not built or tried yet. Later: tray icon + autostart so closing the window doesn't stop alerts
 - [x] **Notification sound choice** (owner app 1.3, `0017_notification_sound.sql`): Dashboard → Settings, in the app only, five sounds (system, chime, bell, doorbell, alert) with preview. Each person picks their own (`profiles.notification_sound`); one Android channel per sound (`lib/notification-sounds.ts`, `npm run sounds` makes the WAVs). Built; not yet tried on a phone
 - [ ] Final app icon and splash
 

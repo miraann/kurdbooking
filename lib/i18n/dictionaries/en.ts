@@ -503,6 +503,14 @@ const en: Dict = {
     bookingCancelled: "Appointment cancelled",
     newOrderTitle: "New order",
     newOrderBody: "{shop} · {owner} · {phone}",
+    desktop: {
+      title: "Windows notifications",
+      on: "A Windows notification appears when a new booking comes in. Keep the window open (minimized is fine, but don't close it).",
+      off: "Turn on alerts for new bookings on this computer.",
+      denied: "Notifications are blocked. Allow them in Windows settings (Notifications).",
+      turnOn: "Turn on notifications",
+      unsupported: "This version doesn't support notifications.",
+    },
     sound: {
       title: "Notification sound",
       help: "The sound the phone app plays when a new alert comes in.",

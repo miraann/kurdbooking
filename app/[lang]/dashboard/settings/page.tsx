@@ -7,6 +7,7 @@ import { FieldsForm } from "@/components/forms/FieldsForm";
 import { ResourceEditor } from "@/components/dashboard/ResourceEditor";
 import { PushAlerts } from "@/components/push/PushAlerts";
 import { BackgroundCard } from "@/components/push/BackgroundCard";
+import { DesktopCard } from "@/components/push/DesktopAlerts";
 import { SoundCard } from "@/components/push/SoundCard";
 import { DEFAULT_NOTIFICATION_SOUND, isNotificationSound } from "@/lib/notification-sounds";
 import { PasswordForm } from "@/components/forms/PasswordForm";
@@ -32,6 +33,7 @@ export default async function SettingsPage() {
       <h1 className="page-title">{s.title}</h1>
 
       <PushAlerts publicKey={publicKey} />
+      <DesktopCard />
       <BackgroundCard />
       <SoundCard initial={isNotificationSound(me?.notification_sound) ? me.notification_sound : DEFAULT_NOTIFICATION_SOUND} />
 
