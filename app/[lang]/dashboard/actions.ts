@@ -8,7 +8,10 @@ import { z } from "zod";
 import { CURRENT_SHOP_COOKIE, requireShop, getShopContext } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { echoValues, FieldError, parseFields, removeImages } from "@/lib/fields.server";
+import { echoValues, FieldError, MEDIA_BUCKET, parseFields, removeImages } from "@/lib/fields.server";
+import { safeFetch } from "@/lib/safe-fetch.server";
+import { isAllowedUrl, isImageHost, isPageHost, metaContent, platformOf, sniffImage } from "@/lib/url-guard";
+import { allowAttempt } from "@/lib/rate-limit";
 import type { ActionState } from "@/lib/fields";
 import { isResourceKey, RESOURCES, type ResourceKey } from "@/lib/resources";
 import { withShopOptions } from "@/lib/resources.server";
@@ -479,4 +482,64 @@ async function dropStaffLogin(admin: Admin, shopId: string, userId: string): Pro
     if (deleteError) console.error("staff account delete failed", deleteError.message);
   }
   return { ok: true };
+}
+
+// ── Posts: add one from its link ───────────────────────────────────────────
+
+/**
+ * Reads a social post's preview (og:image and text) and adds it to the posts
+ * list. The image is copied into the shop's storage folder: the site only
+ * shows images from our storage (CSP), and the sites' own image links expire.
+ * Fetching other sites goes through lib/safe-fetch.server.ts (allowed hosts,
+ * public addresses only). No preview = the post is added without an image.
+ */
+export async function addPostFromLink(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { lang, t } = await getActionI18n();
+  const p = t.dashboard.postLink;
+  const { shop, user } = await requireShop(["owner", "manager"]);
+  const raw = String(formData.get("url") ?? "").trim().slice(0, 1000);
+  const fail = (message: string): ActionState => ({ ok: false, message, values: { url: raw }, nonce: Date.now() });
+  const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+  const platform = platformOf(url);
+  if (!raw || !platform || !isAllowedUrl(url, isPageHost)) return fail(p.unknown);
+  if (!(await allowAttempt("linkPreview", user.id))) return fail(t.errors.tooFast);
+
+  const page = await safeFetch(url, { allowHost: isPageHost, maxBytes: 2_000_000, accept: "text/html,application/xhtml+xml" });
+  const html = page?.contentType.includes("html") ? new TextDecoder().decode(page.body) : "";
+  const imageLink = html ? (metaContent(html, "og:image") ?? metaContent(html, "twitter:image")) : null;
+  const text = html ? (metaContent(html, "og:description") ?? metaContent(html, "og:title")) : null;
+
+  const supabase = await createClient();
+  let imageUrl: string | null = null;
+  if (imageLink && page) {
+    let absolute: string | null = null;
+    try {
+      absolute = new URL(imageLink, page.url).toString();
+    } catch {
+      absolute = null;
+    }
+    const img = absolute ? await safeFetch(absolute, { allowHost: isImageHost, maxBytes: 5 * 1024 * 1024, accept: "image/*" }) : null;
+    const kind = img ? sniffImage(img.body) : null;
+    if (img && kind) {
+      const path = `${shop.id}/posts/${crypto.randomUUID()}.${kind.ext}`;
+      const { error } = await supabase.storage
+        .from(MEDIA_BUCKET)
+        .upload(path, new Blob([img.body], { type: kind.type }), { contentType: kind.type, cacheControl: "31536000", upsert: false });
+      if (!error) imageUrl = supabase.storage.from(MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;
+    }
+  }
+
+  const { error } = await supabase.from("posts").insert({
+    shop_id: shop.id,
+    platform,
+    url,
+    image_url: imageUrl,
+    caption: text ? text.slice(0, 500) : null,
+  });
+  if (error) {
+    if (imageUrl) await removeImages(supabase, [imageUrl]);
+    return fail(userMessage(error, lang));
+  }
+  afterChange(shop.id);
+  return { ok: true, message: imageUrl ? p.added : p.addedNoImage, nonce: Date.now() };
 }

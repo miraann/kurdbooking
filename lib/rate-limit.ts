@@ -16,6 +16,7 @@ export const LIMITS = {
   customerSignup: { max: 10, windowSeconds: 60 * 60 }, // new customer profiles, per IP
   passwordEmail: { max: 5, windowSeconds: 60 * 60 }, // /forgot-password, per IP
   passwordChange: { max: 5, windowSeconds: 10 * 60 }, // Settings, per account
+  linkPreview: { max: 20, windowSeconds: 10 * 60 }, // post link previews (fetches other sites), per account
 } as const;
 
 export type LimitKind = keyof typeof LIMITS;

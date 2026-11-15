@@ -227,6 +227,14 @@ const en: Dict = {
     },
     gallery: { title: "Gallery", help: "Photos of your work. They appear on your shop page." },
     posts: { title: "Posts", help: "Instagram, Facebook and TikTok posts. Add a link and a picture." },
+    postLink: {
+      title: "Add from a link",
+      help: "Paste a link to an Instagram, Facebook, TikTok, YouTube or Snapchat post; its image and text come by themselves. You can edit them afterwards.",
+      submit: "Fetch and add",
+      unknown: "This link is not from Instagram, Facebook, TikTok, YouTube or Snapchat.",
+      added: "Post added ✓",
+      addedNoImage: "Post added, but its image couldn't be fetched. Add one with «Edit».",
+    },
     profile: { title: "Profile and colours", help: "Name, logo, colours and contact details shown on your shop page." },
     schedule: {
       title: "Working hours and days off",
