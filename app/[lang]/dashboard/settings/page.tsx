@@ -6,6 +6,7 @@ import { saveAppListing, saveBookingSettings } from "@/app/[lang]/dashboard/acti
 import { FieldsForm } from "@/components/forms/FieldsForm";
 import { ResourceEditor } from "@/components/dashboard/ResourceEditor";
 import { PushAlerts } from "@/components/push/PushAlerts";
+import { BackgroundCard } from "@/components/push/BackgroundCard";
 import { PasswordForm } from "@/components/forms/PasswordForm";
 import { pushPublicKey } from "@/lib/push";
 
@@ -28,6 +29,7 @@ export default async function SettingsPage() {
       <h1 className="page-title">{s.title}</h1>
 
       <PushAlerts publicKey={publicKey} />
+      <BackgroundCard />
 
       {manager && (
         <>

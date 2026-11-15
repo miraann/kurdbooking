@@ -39,7 +39,7 @@ Status as of 2026-11-14: phases 1–4 are built and live on Vercel (https://kurd
 - [x] Build Android: signed APK + Play bundle (`native/README.md`). The shell keeps the page clear of the system bars (targetSdk 36 is edge to edge), the back key goes back a page, cookies are saved on pause, icon and launch screen come from `native/icon.svg`
 - [ ] Build: iOS (Mac or cloud), Windows (Rust)
 - [ ] Google Play listing ($25 once): upload `app-release.aab`, keep Play App Signing on
-- [ ] Battery/autostart helper so booking pushes reach swiped-away apps on Xiaomi, Samsung, Huawei… (port zhewar's `BackgroundReliabilityPlugin` + a dashboard settings card)
+- [x] **Battery/autostart helper** (owner app 1.1): `BackgroundReliabilityPlugin` from zhewar, the system «run in the background?» dialog once after push is on, and a «کارکردن لە پاشبنەمادا» card in Dashboard → Settings (battery dialog, App info when Restricted, the vendor's autostart list on Xiaomi/Samsung/Huawei…). Built; not yet tried on a phone
 - [x] Push to owners/managers (and the booked staff member) on new bookings: browser push + Android app (FCM, Firebase project `kurdbooking`, `google-services.json` in `native/mobile/android/app`). Needs `FIREBASE_SERVICE_ACCOUNT` on Vercel for the app
 - [ ] iOS push: needs an Apple Developer account, then an APNs key uploaded to Firebase and `GoogleService-Info.plist`
 - [x] Browser push (Web Push, `lib/push.ts`, `public/sw.js`, tables `push_subscriptions` / `push_keys`): the super admin gets an alert for each new `/signup` order

@@ -14,6 +14,8 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // Battery / autostart checks for Dashboard → Settings (before super.onCreate).
+        registerPlugin(BackgroundReliabilityPlugin.class);
         super.onCreate(savedInstanceState);
         keepPageClearOfSystemBars();
         backGoesToThePreviousPage();

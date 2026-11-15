@@ -45,4 +45,6 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Android 13+: needed to show push notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- The system "let the app run in the background?" dialog (BackgroundReliabilityPlugin). -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 </manifest>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Bell, X } from "lucide-react";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { enableNativePush, listenNativePush, type ForegroundAlert } from "./native";
+import { promptBatteryOnce } from "./background";
 
 /**
  * Mounted in the dashboard and /super layouts. Inside the Android app it
@@ -22,6 +23,8 @@ export function NativePush() {
       timer = setTimeout(() => setAlert(null), 8000);
     })
       .then(() => enableNativePush())
+      // Push is on: ask once to let the app run in the background (owner app 1.1+).
+      .then((status) => (status === "granted" ? promptBatteryOnce() : undefined))
       .catch((e) => console.error("native push", e));
     return () => clearTimeout(timer);
   }, []);
