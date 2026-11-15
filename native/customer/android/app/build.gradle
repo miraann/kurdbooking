@@ -16,12 +16,12 @@ android {
         applicationId "com.kurdbooking.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
-        versionName "1.1"
+        versionCode 3
+        versionName "1.2"
         // Shop links on this host open in the app (AndroidManifest.xml → App Links). Change it
         // with -PkbAppLinkHost=kurdbooking.com once the domain is bought, and list the app's key
         // in that site's /.well-known/assetlinks.json.
-        manifestPlaceholders = [appLinkHost: (project.findProperty("kbAppLinkHost") ?: "kurdbooking-dlpz.vercel.app")]
+        manifestPlaceholders = [appLinkHost: (project.findProperty("kbAppLinkHost") ?: "kurdbooking.vercel.app")]
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

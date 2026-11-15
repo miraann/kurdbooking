@@ -1,6 +1,6 @@
 # Roadmap
 
-Status as of 2026-11-14: phases 1–4 are built and live on Vercel (https://kurdbooking-dlpz.vercel.app) with every migration applied to the live Supabase project. Everything below is checked by `npm run typecheck`, `npm run lint`, `npm test` and `npm run build`.
+Status as of 2026-11-14: phases 1–4 are built and live on Vercel (https://kurdbooking.vercel.app since 2026-11-15; the first address, kurdbooking-dlpz.vercel.app, stays as an extra domain so older apps and printed QR codes keep working) with every migration applied to the live Supabase project. Everything below is checked by `npm run typecheck`, `npm run lint`, `npm test` and `npm run build`.
 
 ## ✅ Phase 1: Foundation
 - [x] Next.js 16 project (Cache Components, Turbopack, Tailwind 4, Kurdish font, RTL)
@@ -35,7 +35,7 @@ Status as of 2026-11-14: phases 1–4 are built and live on Vercel (https://kurd
 
 ## 🔜 Phase 5: Apps and notifications
 - [x] Capacitor Android + iOS projects generated, Tauri Windows project with icons
-- [x] Live URL set in `native/mobile/capacitor.config.ts` (https://kurdbooking-dlpz.vercel.app)
+- [x] Live URL set in `native/mobile/capacitor.config.ts` (https://kurdbooking.vercel.app; apps 1.2)
 - [x] Build Android: signed APK + Play bundle (`native/README.md`). The shell keeps the page clear of the system bars (targetSdk 36 is edge to edge), the back key goes back a page, cookies are saved on pause, icon and launch screen come from `native/icon.svg`
 - [ ] Build: iOS (Mac or cloud), Windows (Rust)
 - [ ] Google Play listing ($25 once): upload `app-release.aab`, keep Play App Signing on

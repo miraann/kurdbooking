@@ -29,18 +29,23 @@ public class MainActivity extends BridgeActivity {
         openLink(intent);
     }
 
+    // The site's first address: links and QR codes made with it open on the current one.
+    private static final String OLD_HOST = "kurdbooking-dlpz.vercel.app";
+
     // A shop link or QR code (App Links, see AndroidManifest.xml) opens that page here.
     // Capacitor core only loads the start page; following the link is @capacitor/app's job,
-    // which this app doesn't use. Only https links to the site's own host are followed.
+    // which this app doesn't use. Only https links to the site's own hosts are followed.
     private void openLink(Intent intent) {
         if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction()) || getBridge() == null) return;
         Uri link = intent.getData();
         String server = getBridge().getServerUrl();
-        if (link == null || server == null || !"https".equals(link.getScheme())) return;
-        if (link.getHost() == null || !link.getHost().equalsIgnoreCase(Uri.parse(server).getHost())) return;
+        if (link == null || server == null || !"https".equals(link.getScheme()) || link.getHost() == null) return;
+        String host = Uri.parse(server).getHost();
+        if (!link.getHost().equalsIgnoreCase(host) && !link.getHost().equalsIgnoreCase(OLD_HOST)) return;
+        String target = link.buildUpon().authority(host).build().toString();
         WebView webView = getBridge().getWebView();
         // After the start page, so the back key returns to the shop list.
-        webView.post(() -> webView.loadUrl(link.toString()));
+        webView.post(() -> webView.loadUrl(target));
     }
 
     // Same shell as the owner app (native/mobile). Android 15+ draws every app edge to edge,
