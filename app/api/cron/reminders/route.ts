@@ -5,7 +5,7 @@ import { addDays, todayKey } from "@/lib/booking";
 import { fmt } from "@/lib/format";
 import { customerMessage } from "@/lib/customer-push";
 
-// Day-before reminders. Vercel runs this once a day (vercel.json → crons,
+// Day-before reminders (and removing past waitlist days). Vercel runs this once a day (vercel.json → crons,
 // 15:00 UTC = 18:00 in Iraq): every customer with a confirmed booking
 // tomorrow (in the shop's time zone) gets a push on their profile's devices.
 //
@@ -34,6 +34,9 @@ export async function GET(request: NextRequest) {
 
   const admin = createAdminClient();
   const now = new Date();
+  // Waitlist days that have passed (0016) go too.
+  const { error: oldWaitError } = await admin.from("waitlist").delete().lt("date", addDays(todayKey("Asia/Baghdad", now), -1));
+  if (oldWaitError) console.error("reminders: waitlist cleanup failed", oldWaitError);
   const { data, error } = await admin
     .from("appointments")
     .select("id, starts_at, service_name, public_token, customers(user_id), shops(name, slug, timezone, status)")

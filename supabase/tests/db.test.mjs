@@ -45,7 +45,7 @@ await db.exec(`
 `);
 
 // 0006 (pg_cron schedule) needs the cron extension, which PGlite doesn't have.
-for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql', '0009_shop_requests.sql', '0010_web_push.sql', '0011_native_push.sql', '0012_rate_limits.sql', '0013_favorites.sql', '0014_reminders.sql', '0015_staff_logins.sql']) {
+for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql', '0009_shop_requests.sql', '0010_web_push.sql', '0011_native_push.sql', '0012_rate_limits.sql', '0013_favorites.sql', '0014_reminders.sql', '0015_staff_logins.sql', '0016_waitlist.sql']) {
   try { await db.exec(readFileSync(new URL(f, MIG), 'utf8')); console.log('applied', f); }
   catch (e) { console.log('MIGRATION FAILED', f, e.message, e.position ?? ''); process.exit(1); }
 }
@@ -409,6 +409,36 @@ await expectError('staff login cannot add members', `insert into public.shop_mem
 await as(null);
 await db.query(`delete from public.shop_members where shop_id=$1 and user_id=$2`, [shopA, users.barber]);
 await db.query(`delete from public.staff where id=$1`, [newStaff]);
+
+// ── Waitlist (0016) ────────────────────────────────────────────────────────
+await as(null);
+const [wlStatusA, wlStatusB] = [await statusOf(shopA), await statusOf(shopB)];
+await db.query(`update public.shops set status='active' where id=$1`, [shopA]);
+await db.query(`update public.shops set status='suspended' where id=$1`, [shopB]);
+const day = (n) => (n >= 0 ? `current_date + ${n}` : `current_date - ${-n}`);
+const staffOfB = (await db.query(`select id from public.staff where shop_id=$1 limit 1`, [shopB])).rows[0].id;
+await as('authenticated', users.kawa);
+await db.query(`insert into public.waitlist (shop_id, user_id, date) values ($1,$2,${day(2)})`, [shopA, users.kawa]);
+const wl = (await db.query(`select * from public.my_waitlist()`)).rows;
+ok('customer joins a waitlist', wl.length === 1 && wl[0].shop_name === 'Ali Barber', JSON.stringify(wl));
+await expectError('one entry per shop and day', `insert into public.waitlist (shop_id, user_id, date) values ($1,$2,${day(2)})`, [shopA, users.kawa], 'duplicate key');
+await expectError('cannot join for someone else', `insert into public.waitlist (shop_id, user_id, date) values ($1,$2,${day(3)})`, [shopA, users.ali], 'row-level security');
+await expectError('cannot join a closed shop', `insert into public.waitlist (shop_id, user_id, date) values ($1,$2,${day(3)})`, [shopB, users.kawa], 'row-level security');
+await expectError('cannot join a past day', `insert into public.waitlist (shop_id, user_id, date) values ($1,$2,${day(-5)})`, [shopA, users.kawa], 'row-level security');
+await expectError('cannot mark itself notified', `insert into public.waitlist (shop_id, user_id, date, notified_at) values ($1,$2,${day(4)},now())`, [shopA, users.kawa], 'row-level security');
+await expectError("cannot point at another shop's staff", `insert into public.waitlist (shop_id, user_id, date, staff_id) values ($1,$2,${day(5)},$3)`, [shopA, users.kawa, staffOfB], 'foreign key');
+await expectError('customer cannot change an entry', `update public.waitlist set date=${day(9)}`, [], 'permission denied');
+await as('authenticated', users.ali);
+ok('shop owner sees who waits for their shop', (await db.query(`select * from public.waitlist where shop_id=$1`, [shopA])).rows.length === 1);
+await as('authenticated', users.sara);
+ok('other shops see nothing', (await db.query(`select * from public.waitlist`)).rows.length === 0);
+await as('anon');
+await expectError('anon cannot read the waitlist', `select * from public.waitlist`, [], 'permission denied');
+await as('authenticated', users.kawa);
+ok('customer leaves the waitlist', (await db.query(`delete from public.waitlist where shop_id=$1`, [shopA])).affectedRows === 1);
+await as(null);
+await db.query(`update public.shops set status=$2 where id=$1`, [shopA, wlStatusA]);
+await db.query(`update public.shops set status=$2 where id=$1`, [shopB, wlStatusB]);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

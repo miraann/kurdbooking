@@ -29,8 +29,18 @@ export function eligibleStaff<T extends Pick<Staff, "id" | "is_active">>(
 }
 
 export async function getAvailability(input: AvailabilityInput): Promise<Map<string, string[]>> {
+  return (await getAvailabilityDetail(input)).byStaff;
+}
+
+/**
+ * Free times per staff member, plus `full`: no free time, but there would be
+ * without the existing bookings (so a cancellation can open one: the
+ * waitlist is worth joining). A closed day or a day past notice is not full.
+ */
+export async function getAvailabilityDetail(input: AvailabilityInput): Promise<{ byStaff: Map<string, string[]>; full: boolean }> {
   const result = new Map<string, string[]>();
-  if (!isDateKey(input.dateKey) || input.staff.length === 0) return result;
+  let openWithoutBookings = false;
+  if (!isDateKey(input.dateKey) || input.staff.length === 0) return { byStaff: result, full: false };
 
   const admin = createAdminClient();
   const staffIds = input.staff.map((s) => s.id);
@@ -70,23 +80,22 @@ export async function getAvailability(input: AvailabilityInput): Promise<Map<str
 
   for (const id of staffIds) {
     const own = hours.find((h) => h.staff_id === id);
-    result.set(
-      id,
-      computeSlots({
-        dateKey: input.dateKey,
-        timeZone: input.timeZone,
-        hours: (own ?? shopHours) as DayHours | null,
-        isBlocked: shopClosed || wholeDay(id),
-        closed: [...shopRanges, ...ranges(id)],
-        durationMinutes: input.service.duration_minutes,
-        intervalMinutes: input.profile.slot_interval_minutes,
-        minNoticeMinutes: input.profile.min_notice_minutes,
-        maxDaysAhead: input.profile.max_days_ahead,
-        busy: busy.filter((b) => b.staff_id === id),
-      }),
-    );
+    const day = {
+      dateKey: input.dateKey,
+      timeZone: input.timeZone,
+      hours: (own ?? shopHours) as DayHours | null,
+      isBlocked: shopClosed || wholeDay(id),
+      closed: [...shopRanges, ...ranges(id)],
+      durationMinutes: input.service.duration_minutes,
+      intervalMinutes: input.profile.slot_interval_minutes,
+      minNoticeMinutes: input.profile.min_notice_minutes,
+      maxDaysAhead: input.profile.max_days_ahead,
+    };
+    result.set(id, computeSlots({ ...day, busy: busy.filter((b) => b.staff_id === id) }));
+    if (!openWithoutBookings) openWithoutBookings = computeSlots({ ...day, busy: [] }).length > 0;
   }
-  return result;
+  const anyFree = [...result.values()].some((slots) => slots.length > 0);
+  return { byStaff: result, full: !anyFree && openWithoutBookings };
 }
 
 /** Union of all staff slots, sorted ("any staff member" option). */

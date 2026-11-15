@@ -10,6 +10,7 @@ import { useI18n } from "@/components/i18n/I18nProvider";
 import { CustomerAuth } from "@/app/[lang]/(customer)/account/CustomerAuth";
 import { customerLogout } from "@/app/[lang]/(customer)/account/actions";
 import { bookAppointment } from "./actions";
+import { WaitlistJoin } from "./WaitlistJoin";
 
 interface ServiceOption { id: string; name: string; duration_minutes: number; price_iqd: number | null }
 interface StaffOption { id: string; name: string; title: string | null; photo_url: string | null; is_active: boolean }
@@ -24,15 +25,21 @@ export function BookingForm(props: {
   services: ServiceOption[];
   staff: StaffOption[];
   staffServices: { staff_id: string; service_id: string }[];
+  /** From a waitlist push (?date=&service=), already checked by the page. */
+  initialDate?: string;
+  initialService?: string;
+  /** /account, coming back to this day (guests joining a waitlist). */
+  profileHref: string;
 }) {
   const router = useRouter();
   const { t, f, href } = useI18n();
   const b = t.booking;
-  const [serviceId, setServiceId] = useState(props.services.length === 1 ? props.services[0].id : "");
+  const [serviceId, setServiceId] = useState(props.initialService ?? (props.services.length === 1 ? props.services[0].id : ""));
   const [staffId, setStaffId] = useState("any");
-  const [date, setDate] = useState(props.today);
+  const [date, setDate] = useState(props.initialDate ?? props.today);
   const [time, setTime] = useState("");
   const [slots, setSlots] = useState<string[] | null>(null);
+  const [full, setFull] = useState(false); // no time left because of bookings: offer the waitlist
   const [reload, setReload] = useState(0);
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
@@ -60,7 +67,10 @@ export function BookingForm(props: {
     const q = new URLSearchParams({ service: serviceId, staff: staffId, date });
     fetch(`/api/shops/${props.slug}/slots?${q}`, { signal: controller.signal })
       .then((r) => r.json())
-      .then((d: { slots?: string[] }) => setSlots(d.slots ?? []))
+      .then((d: { slots?: string[]; full?: boolean }) => {
+        setFull(!!d.full);
+        setSlots(d.slots ?? []);
+      })
       .catch(() => {});
     return () => controller.abort();
   }, [serviceId, staffId, date, reload, props.slug]);
@@ -165,6 +175,9 @@ export function BookingForm(props: {
                   <Clock className="size-6 text-neutral-300" aria-hidden />
                 </div>
                 <p className="px-6 text-sm leading-relaxed text-neutral-500">{b.noSlots}</p>
+                {serviceId && full && (
+                  <WaitlistJoin slug={props.slug} viewer={props.viewer} serviceId={serviceId} staffId={staffId} date={date} profileHref={props.profileHref} />
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

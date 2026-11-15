@@ -26,6 +26,7 @@ import { DICTS } from "@/lib/i18n/dictionaries";
 import type { AppointmentStatus } from "@/lib/types";
 import { sendPush } from "@/lib/push";
 import { customerEvent, customerMessage, type BookingForPush } from "@/lib/customer-push";
+import { notifyWaitlist } from "@/lib/waitlist.server";
 
 // Every action re-checks the user and their role (requireShop) and scopes
 // every query by shop_id. RLS enforces the same rules again in the database.
@@ -293,7 +294,7 @@ export async function setAppointmentStatus(id: string, status: AppointmentStatus
   const supabase = await createClient();
   const { data: before } = await supabase
     .from("appointments")
-    .select("status, starts_at, service_name, public_token, customers(user_id)")
+    .select("status, starts_at, staff_id, service_name, public_token, customers(user_id)")
     .eq("id", id)
     .eq("shop_id", shop.id)
     .maybeSingle();
@@ -310,6 +311,12 @@ export async function setAppointmentStatus(id: string, status: AppointmentStatus
       service: before.service_name, startsAt: before.starts_at,
     };
     after(() => sendPush([userId], customerMessage(event, booking)).catch((err) => console.error("customer push failed", err)));
+  }
+  // A time opened: tell the people waiting for that day (0016 waitlist).
+  if (status === "cancelled" && (before.status === "pending" || before.status === "confirmed")) {
+    after(() =>
+      notifyWaitlist({ shopId: shop.id, staffId: before.staff_id, startsAt: before.starts_at }).catch((err) => console.error("waitlist failed", err)),
+    );
   }
   refresh();
   return { ok: true };

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import type { Metadata } from "next";
-import { CalendarDays, ChevronLeft, Clock, Heart, LogOut, UserRound } from "lucide-react";
+import { BellRing, CalendarDays, ChevronLeft, Clock, Heart, LogOut, UserRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getViewer, type Customer } from "@/lib/customer";
 import { displayPhone } from "@/lib/format";
@@ -15,6 +15,7 @@ import { Stars } from "@/components/ui/Stars";
 import { CustomerAuth } from "./CustomerAuth";
 import { CancelBooking } from "./CancelBooking";
 import { ReviewForm } from "./ReviewForm";
+import { LeaveWaitlist } from "./LeaveWaitlist";
 import { customerLogout } from "./actions";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -66,6 +67,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/[lang]/a
       <Heading as="h1" eyebrow="PROFILE" title={a.title} />
       <ProfileCard customer={viewer.customer} />
       <MyFavorites />
+      <MyWaitlist />
       <MyBookings />
     </main>
   );
@@ -93,6 +95,56 @@ async function ProfileCard({ customer }: { customer: Customer }) {
           <LogOut className="size-4 ltr:rotate-180" aria-hidden /> {t.account.logout}
         </button>
       </form>
+    </section>
+  );
+}
+
+interface WaitlistEntry {
+  id: string;
+  shop_slug: string;
+  shop_name: string;
+  shop_logo_url: string | null;
+  date: string;
+  service_id: string | null;
+  service_name: string | null;
+  staff_name: string | null;
+}
+
+/** Days the customer waits for (0016). Nothing shown when there are none. */
+async function MyWaitlist() {
+  const supabase = await createClient();
+  const [{ data }, { t, f, href }] = await Promise.all([supabase.rpc("my_waitlist"), getI18n()]);
+  const a = t.account;
+  const rows = (data ?? []) as WaitlistEntry[];
+  if (rows.length === 0) return null;
+  return (
+    <section className="mt-10">
+      <h2 className="mb-1 flex items-center gap-2 text-lg font-bold text-neutral-900">
+        <BellRing className="size-5" style={{ color: "var(--shop-primary)" }} aria-hidden /> {a.waitlist}
+      </h2>
+      <p className="mb-4 text-sm text-neutral-500">{a.waitlistHelp}</p>
+      <ul className="space-y-3">
+        {rows.map((w) => (
+          <li key={w.id} className="flex items-center gap-3 rounded-3xl border border-neutral-100 bg-white p-4 shadow-sm">
+            <Link
+              href={href(`/s/${w.shop_slug}/book?date=${w.date}${w.service_id ? `&service=${w.service_id}` : ""}`)}
+              className="flex min-w-0 flex-1 items-center gap-3"
+            >
+              <LogoRing logoUrl={w.shop_logo_url} className="size-12" iconClassName="size-5" spin={false} />
+              <span className="min-w-0 space-y-1">
+                <span className="block truncate font-bold text-neutral-900">{w.shop_name}</span>
+                <span className="flex items-center gap-1.5 text-xs text-neutral-500">
+                  <CalendarDays className="size-3.5 text-neutral-400" aria-hidden />{f.date(w.date)}
+                </span>
+                <span className="block truncate text-xs text-neutral-500">
+                  {[w.service_name, w.staff_name ?? a.waitlistAnyone].filter(Boolean).join(" · ")}
+                </span>
+              </span>
+            </Link>
+            <LeaveWaitlist id={w.id} />
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

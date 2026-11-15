@@ -10,6 +10,7 @@ import { customerEmail, getViewer, isCustomerMeta } from "@/lib/customer";
 import { allowAttempt } from "@/lib/rate-limit";
 import { displayPhone, fill, fmt, normalizePhone } from "@/lib/format";
 import { notifyShop } from "@/lib/push";
+import { notifyWaitlist } from "@/lib/waitlist.server";
 import { LISTED_SHOPS_TAG, shopTag } from "@/lib/shop-data";
 import { DICTS } from "@/lib/i18n/dictionaries";
 import { getActionI18n } from "@/lib/i18n/request";
@@ -133,6 +134,10 @@ export async function cancelMyBooking(id: string): Promise<{ ok: boolean; messag
           tag: `booking-${id}`,
         };
       }).catch((err) => console.error("cancel push failed", err));
+      // A time opened: tell the people waiting for that day (0016 waitlist).
+      await notifyWaitlist({ shopId: appt.shop_id, staffId: appt.staff_id, startsAt: appt.starts_at }).catch((err) =>
+        console.error("waitlist failed", err),
+      );
     });
   }
   refresh(); // the list shows the new status
@@ -176,6 +181,18 @@ export async function submitMyReview(id: string, rating: number, body: string): 
       };
     }).catch((err) => console.error("review push failed", err)),
   );
+  refresh();
+  return { ok: true };
+}
+
+/** Leave a waitlist (RLS: only your own rows). */
+export async function leaveWaitlist(id: string): Promise<{ ok: boolean; message?: string }> {
+  const { t } = await getActionI18n();
+  const viewer = await getViewer();
+  if (viewer.kind !== "customer" || !z.uuid().safeParse(id).success) return { ok: false, message: t.errors.generic };
+  const supabase = await createClient();
+  const { error } = await supabase.from("waitlist").delete().eq("id", id).eq("user_id", viewer.customer.id);
+  if (error) return { ok: false, message: t.errors.generic };
   refresh();
   return { ok: true };
 }

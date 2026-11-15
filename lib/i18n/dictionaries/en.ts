@@ -203,6 +203,7 @@ const en: Dict = {
       remind: "Remind",
       reminded: "Reminded",
       mine: "Only mine",
+      waiting: "{n} on the waitlist",
     },
     billing: {
       title: "Subscription",
@@ -370,6 +371,11 @@ const en: Dict = {
     note: "Note (optional)",
     book: "Book this time",
     request: "Send request",
+    waitlistJoin: "Tell me if a time opens",
+    waitlistJoined: "You're on the waitlist",
+    waitlistHow: "If someone cancels on this day you get an alert. The first to book gets the time.",
+    waitlistAlerts: "Turn on alerts in your profile",
+    waitlistGuest: "Create a profile to get an alert when a time opens on this day.",
     errors: {
       loginRequired: "Create a profile or log in first to book.",
       shopClosed: "This shop isn't taking bookings right now",
@@ -380,6 +386,8 @@ const en: Dict = {
       tooMany: "You already have several bookings. Please contact the shop.",
       blocked: "Sorry, you can't book here. Please contact the shop.",
       insertFailed: "The appointment wasn't saved. Please try again.",
+      waitlistFull: "You can wait for at most 5 days at a time.",
+      waitlistFailed: "Couldn't join the waitlist. Please try again.",
     },
   },
 
@@ -435,6 +443,10 @@ const en: Dict = {
     sendReview: "Send review",
     reviewNote: "Only your first name is shown with the review on the shop page. You can review a visit once.",
     yourRating: "Your rating:",
+    waitlist: "Waitlist",
+    waitlistHelp: "You get an alert if a time opens on these days.",
+    waitlistLeave: "Leave",
+    waitlistAnyone: "Anyone",
     errors: {
       name: "Please enter your name",
       nameLong: "The name is too long",
@@ -503,6 +515,8 @@ const en: Dict = {
     customerOffHelp: "Turn on alerts to know when your booking is confirmed, and to get a reminder the day before.",
     newReviewTitle: "New review {stars}",
     newReviewBody: "{name}: {text}",
+    waitlistTitle: "A time opened at {shop}",
+    waitlistBody: "{date}: the first to book gets it.",
   },
 
   super: {

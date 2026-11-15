@@ -64,10 +64,14 @@ export default async function AppointmentsPage({ searchParams }: PageProps<"/[la
     query = view === "pending" ? query.eq("status", "pending") : query.in("status", ["pending", "confirmed"]);
   }
 
-  const [{ data, error }, { data: templates }] = await Promise.all([
+  const [{ data, error }, { data: templates }, { data: waitRows }] = await Promise.all([
     query,
     supabase.from("whatsapp_templates").select("*").eq("shop_id", shop.id).order("sort_order"),
+    // Customers waiting for a full day to open up (0016), per shop-local day.
+    supabase.from("waitlist").select("date").eq("shop_id", shop.id).gte("date", todayKey(shop.timezone)),
   ]);
+  const waiting = new Map<string, number>();
+  for (const w of waitRows ?? []) waiting.set(w.date as string, (waiting.get(w.date as string) ?? 0) + 1);
   if (error) throw error;
   const rows = (data ?? []) as unknown as Row[];
   // No-shows per customer, so the owner sees who keeps not coming (block after 2–3).
@@ -119,7 +123,14 @@ export default async function AppointmentsPage({ searchParams }: PageProps<"/[la
 
       {[...groups.entries()].map(([key, group]) => (
         <section key={key} className="space-y-3">
-          <h2 className="text-sm font-bold text-slate-500">{group.label}</h2>
+          <h2 className="flex flex-wrap items-center gap-2 text-sm font-bold text-slate-500">
+            {group.label}
+            {view !== "past" && (waiting.get(key) ?? 0) > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
+                <BellRing className="size-3" aria-hidden /> {fill(ta.waiting, { n: f.num(waiting.get(key) ?? 0) })}
+              </span>
+            )}
+          </h2>
           {group.items.map((a) => {
             const { time, date } = f.instant(a.starts_at, shop.timezone);
             const phone = a.customers?.phone ?? "";

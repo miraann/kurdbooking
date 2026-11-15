@@ -3,9 +3,10 @@
 import { after } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { getShopContent } from "@/lib/shop-data";
 import { eligibleStaff, getAvailability } from "@/lib/availability.server";
-import { zonedToUtc } from "@/lib/booking";
+import { addDays, todayKey, zonedToUtc } from "@/lib/booking";
 import { displayPhone, fill, fmt } from "@/lib/format";
 import { getViewer } from "@/lib/customer";
 import { notifyShop } from "@/lib/push";
@@ -119,6 +120,9 @@ export async function bookAppointment(slug: string, raw: BookingInput): Promise<
   if (error?.message?.includes("customer_blocked")) return { ok: false, message: e.blocked };
   if (error || !appointment) return { ok: false, message: e.insertFailed };
 
+  // Booked that day: no need to wait any more (0016 waitlist).
+  await admin.from("waitlist").delete().eq("shop_id", shop.id).eq("user_id", userId).eq("date", input.date);
+
   // Push alert to the owners/managers (and the chosen staff member), after
   // the customer already has their answer.
   const when = startsAt.toISOString();
@@ -135,4 +139,56 @@ export async function bookAppointment(slug: string, raw: BookingInput): Promise<
     }).catch((err) => console.error("booking push failed", err)),
   );
   return { ok: true, id: appointment.id, token: appointment.public_token, status, staffName: chosen.name };
+}
+
+const MAX_WAITLISTS = 5;
+
+/**
+ * Join the waitlist for a full day: a push comes when a booking that day is
+ * cancelled (lib/waitlist.server.ts). The customer comes from the session;
+ * the shop, service, staff member and day are checked here, and RLS (0016)
+ * checks again.
+ */
+export async function joinWaitlist(slug: string, raw: { serviceId: string; staffId: string; date: string }): Promise<{ ok: boolean; message?: string; needProfile?: boolean }> {
+  const { t } = await getActionI18n();
+  const e = t.booking.errors;
+  const viewer = await getViewer();
+  if (viewer.kind !== "customer") return { ok: false, message: e.loginRequired, needProfile: true };
+  const parsed = z
+    .object({ serviceId: z.uuid(), staffId: z.union([z.literal("any"), z.uuid()]), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) })
+    .safeParse(raw);
+  if (!parsed.success) return { ok: false, message: t.errors.invalidData };
+  const input = parsed.data;
+  if (!(await allowAttempt("waitlist", viewer.customer.id))) return { ok: false, message: t.errors.tooFast };
+
+  const admin = createAdminClient();
+  const { data: shop } = await admin.from("shops").select("id, status, timezone").eq("slug", slug).maybeSingle();
+  if (!shop || !LIVE.includes(shop.status)) return { ok: false, message: e.shopClosed };
+  const content = await getShopContent(shop.id);
+  const today = todayKey(shop.timezone);
+  if (!content.profile?.booking_enabled) return { ok: false, message: e.bookingOff };
+  if (!content.services.some((s) => s.id === input.serviceId)) return { ok: false, message: e.noService };
+  if (input.staffId !== "any" && !content.staff.some((s) => s.id === input.staffId)) return { ok: false, message: t.errors.invalidData };
+  if (input.date < today || input.date > addDays(today, content.profile.max_days_ahead)) return { ok: false, message: t.errors.invalidData };
+
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("waitlist")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", viewer.customer.id)
+    .gte("date", today);
+  if ((count ?? 0) >= MAX_WAITLISTS) return { ok: false, message: e.waitlistFull };
+
+  const { error } = await supabase.from("waitlist").insert({
+    shop_id: shop.id,
+    user_id: viewer.customer.id,
+    date: input.date,
+    service_id: input.serviceId,
+    staff_id: input.staffId === "any" ? null : input.staffId,
+  });
+  if (error && error.code !== "23505") {
+    console.error("waitlist join failed", error.code, error.message);
+    return { ok: false, message: e.waitlistFailed };
+  }
+  return { ok: true }; // 23505: already waiting for that day
 }
