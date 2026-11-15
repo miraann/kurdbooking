@@ -5,6 +5,7 @@ import { getMessaging } from "firebase-admin/messaging";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import { isLang, type Lang } from "@/lib/i18n/config";
+import { DEFAULT_NOTIFICATION_SOUND, isNotificationSound, soundChannelId, soundResource, type NotificationSoundId } from "@/lib/notification-sounds";
 
 // One way to alert people, whatever their device. Each row of
 // public.push_subscriptions is one device:
@@ -18,10 +19,8 @@ import { isLang, type Lang } from "@/lib/i18n/config";
 
 type Admin = ReturnType<typeof createAdminClient>;
 export interface PushMessage { title: string; body: string; url: string; tag?: string }
-interface Device { id: string; kind: "web" | "fcm"; endpoint: string; p256dh: string | null; auth: string | null; lang: string }
+interface Device { id: string; kind: "web" | "fcm"; endpoint: string; p256dh: string | null; auth: string | null; lang: string; sound: NotificationSoundId }
 
-/** Android channel the app creates (components/push/native.ts). */
-export const ANDROID_CHANNEL = "alerts";
 
 async function vapidKeys(admin: Admin): Promise<{ public_key: string; private_key: string }> {
   const read = () => admin.from("push_keys").select("public_key, private_key").eq("id", true).maybeSingle();
@@ -83,6 +82,7 @@ async function sendWeb(d: Device, msg: PushMessage, admin: Admin): Promise<Sent>
 const FCM_GONE = ["messaging/registration-token-not-registered", "messaging/invalid-registration-token"];
 
 async function sendFcm(d: Device, msg: PushMessage): Promise<Sent> {
+  // Each sound has its own channel, created by the app (components/push/native.ts).
   const app = firebaseApp();
   if (!app) return { ok: false, gone: false, reason: "no FIREBASE_SERVICE_ACCOUNT" };
   try {
@@ -93,7 +93,7 @@ async function sendFcm(d: Device, msg: PushMessage): Promise<Sent> {
       data: { url: msg.url, ...(msg.tag ? { tag: msg.tag } : {}) },
       android: {
         priority: "high",
-        notification: { channelId: ANDROID_CHANNEL, sound: "default", tag: msg.tag, visibility: "public" },
+        notification: { channelId: soundChannelId(d.sound), sound: soundResource(d.sound) ?? "default", tag: msg.tag, visibility: "public" },
       },
     });
     return { ok: true };
@@ -108,12 +108,16 @@ export async function sendPush(userIds: string[], build: (lang: Lang) => PushMes
   const ids = [...new Set(userIds)];
   if (ids.length === 0) return { sent: 0, failed: 0 };
   const admin = createAdminClient();
-  const { data, error } = await admin
-    .from("push_subscriptions")
-    .select("id, kind, endpoint, p256dh, auth, lang")
-    .in("user_id", ids);
+  const [{ data, error }, { data: people }] = await Promise.all([
+    admin.from("push_subscriptions").select("id, user_id, kind, endpoint, p256dh, auth, lang").in("user_id", ids),
+    admin.from("profiles").select("id, notification_sound").in("id", ids),
+  ]);
   if (error) throw error;
-  const devices = (data ?? []) as Device[];
+  const soundOf = new Map((people ?? []).map((p) => [p.id as string, p.notification_sound]));
+  const devices = (data ?? []).map((d) => {
+    const sound = soundOf.get(d.user_id as string);
+    return { ...d, sound: isNotificationSound(sound) ? sound : DEFAULT_NOTIFICATION_SOUND } as Device;
+  });
   if (devices.length === 0) return { sent: 0, failed: 0 };
 
   const results = await Promise.all(

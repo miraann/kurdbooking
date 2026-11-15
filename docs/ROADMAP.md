@@ -44,7 +44,7 @@ Status as of 2026-11-14: phases 1–4 are built and live on Vercel (https://kurd
 - [ ] iOS push: needs an Apple Developer account, then an APNs key uploaded to Firebase and `GoogleService-Info.plist`
 - [x] Browser push (Web Push, `lib/push.ts`, `public/sw.js`, tables `push_subscriptions` / `push_keys`): the super admin gets an alert for each new `/signup` order
 - [ ] Windows notifications (tauri-plugin-notification), or reuse the browser push above for owners
-- [ ] Notification sound choice (zhewar `notification_sound`)
+- [x] **Notification sound choice** (owner app 1.3, `0017_notification_sound.sql`): Dashboard → Settings, in the app only, five sounds (system, chime, bell, doorbell, alert) with preview. Each person picks their own (`profiles.notification_sound`); one Android channel per sound (`lib/notification-sounds.ts`, `npm run sounds` makes the WAVs). Built; not yet tried on a phone
 - [ ] Final app icon and splash
 
 ## 🔜 Phase 6: Customer app (Android + iOS)

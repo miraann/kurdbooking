@@ -7,6 +7,8 @@ import { FieldsForm } from "@/components/forms/FieldsForm";
 import { ResourceEditor } from "@/components/dashboard/ResourceEditor";
 import { PushAlerts } from "@/components/push/PushAlerts";
 import { BackgroundCard } from "@/components/push/BackgroundCard";
+import { SoundCard } from "@/components/push/SoundCard";
+import { DEFAULT_NOTIFICATION_SOUND, isNotificationSound } from "@/lib/notification-sounds";
 import { PasswordForm } from "@/components/forms/PasswordForm";
 import { pushPublicKey } from "@/lib/push";
 
@@ -15,13 +17,14 @@ export default async function SettingsPage() {
   const manager = canManage(role); // staff logins see only alerts and their password
   const s = t.dashboard.settings;
   const supabase = await createClient();
-  const [{ data: profile }, publicKey] = await Promise.all([
+  const [{ data: profile }, publicKey, { data: me }] = await Promise.all([
     supabase
       .from("shop_profile")
       .select("booking_enabled, auto_confirm, slot_interval_minutes, min_notice_minutes, max_days_ahead")
       .eq("shop_id", shop.id)
       .maybeSingle(),
     pushPublicKey(),
+    supabase.from("profiles").select("notification_sound").eq("id", user.id).maybeSingle(),
   ]);
 
   return (
@@ -30,6 +33,7 @@ export default async function SettingsPage() {
 
       <PushAlerts publicKey={publicKey} />
       <BackgroundCard />
+      <SoundCard initial={isNotificationSound(me?.notification_sound) ? me.notification_sound : DEFAULT_NOTIFICATION_SOUND} />
 
       {manager && (
         <>

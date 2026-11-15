@@ -503,6 +503,14 @@ const en: Dict = {
     bookingCancelled: "Appointment cancelled",
     newOrderTitle: "New order",
     newOrderBody: "{shop} · {owner} · {phone}",
+    sound: {
+      title: "Notification sound",
+      help: "The sound the phone app plays when a new alert comes in.",
+      listen: "Listen to {name}",
+      saved: "Saved ✓",
+      failed: "Could not save",
+      newApp: "To change the sound, install the latest version of the app.",
+    },
     background: {
       title: "Running in the background",
       ok: "The app can run in the background: alerts arrive even when the app is closed.",

@@ -45,7 +45,7 @@ await db.exec(`
 `);
 
 // 0006 (pg_cron schedule) needs the cron extension, which PGlite doesn't have.
-for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql', '0009_shop_requests.sql', '0010_web_push.sql', '0011_native_push.sql', '0012_rate_limits.sql', '0013_favorites.sql', '0014_reminders.sql', '0015_staff_logins.sql', '0016_waitlist.sql']) {
+for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql', '0009_shop_requests.sql', '0010_web_push.sql', '0011_native_push.sql', '0012_rate_limits.sql', '0013_favorites.sql', '0014_reminders.sql', '0015_staff_logins.sql', '0016_waitlist.sql', '0017_notification_sound.sql']) {
   try { await db.exec(readFileSync(new URL(f, MIG), 'utf8')); console.log('applied', f); }
   catch (e) { console.log('MIGRATION FAILED', f, e.message, e.position ?? ''); process.exit(1); }
 }
@@ -439,6 +439,15 @@ ok('customer leaves the waitlist', (await db.query(`delete from public.waitlist 
 await as(null);
 await db.query(`update public.shops set status=$2 where id=$1`, [shopA, wlStatusA]);
 await db.query(`update public.shops set status=$2 where id=$1`, [shopB, wlStatusB]);
+
+// ── notification sound (0017) ───────────────────────────────────────────────
+await as('authenticated', users.ali);
+ok('sound defaults to the phone default', (await db.query(`select notification_sound s from public.profiles where id=$1`, [users.ali])).rows[0].s === 'default');
+await db.query(`update public.profiles set notification_sound='bell' where id=$1`, [users.ali]);
+ok('a person picks their own sound', (await db.query(`select notification_sound s from public.profiles where id=$1`, [users.ali])).rows[0].s === 'bell');
+await expectError('unknown sound is refused', `update public.profiles set notification_sound='evil' where id=$1`, [users.ali], 'check constraint');
+ok("cannot change someone else's sound", (await db.query(`update public.profiles set notification_sound='chime' where id=$1`, [users.sara])).affectedRows === 0);
+await as(null);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPush } from "@/lib/push";
+import { isNotificationSound } from "@/lib/notification-sounds";
 import { getActionI18n } from "@/lib/i18n/request";
 import { DICTS } from "@/lib/i18n/dictionaries";
 import { localePath } from "@/lib/i18n/config";
@@ -74,4 +75,15 @@ export async function sendTestPush(to: "/dashboard" | "/account" = "/dashboard")
     tag: "test",
   }));
   return sent ? { ok: true, message: t.push.testSent } : { ok: false, message: t.push.testFailed };
+}
+
+/** The sound the Android app plays for this person's alerts (own row, RLS). */
+export async function saveNotificationSound(sound: string): Promise<ActionState> {
+  const { lang, t } = await getActionI18n();
+  const user = await requireUser();
+  if (!isNotificationSound(sound)) return { ok: false, message: t.errors.invalidData };
+  const supabase = await createClient();
+  const { error } = await supabase.from("profiles").update({ notification_sound: sound }).eq("id", user.id);
+  if (error) return { ok: false, message: userMessage(error, lang) };
+  return { ok: true, message: t.push.sound.saved };
 }

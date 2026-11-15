@@ -12,6 +12,7 @@
     "test:db": "node supabase/tests/db.test.mjs",
     "test": "npm run test:unit && npm run test:db",
     "db:migrate": "node scripts/db-migrate.mjs",
+    "sounds": "node scripts/generate-notification-sounds.mjs",
     "storage:cleanup": "node scripts/cleanup-orphan-storage.mjs"
   },
   "dependencies": {
