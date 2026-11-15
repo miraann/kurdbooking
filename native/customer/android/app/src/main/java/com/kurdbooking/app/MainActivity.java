@@ -1,5 +1,7 @@
 package com.kurdbooking.app;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.webkit.CookieManager;
@@ -17,6 +19,28 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         keepPageClearOfSystemBars();
         backGoesToThePreviousPage();
+        openLink(getIntent());
+    }
+
+    // The app was already open (launchMode singleTask) and a shop link was tapped.
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        openLink(intent);
+    }
+
+    // A shop link or QR code (App Links, see AndroidManifest.xml) opens that page here.
+    // Capacitor core only loads the start page; following the link is @capacitor/app's job,
+    // which this app doesn't use. Only https links to the site's own host are followed.
+    private void openLink(Intent intent) {
+        if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction()) || getBridge() == null) return;
+        Uri link = intent.getData();
+        String server = getBridge().getServerUrl();
+        if (link == null || server == null || !"https".equals(link.getScheme())) return;
+        if (link.getHost() == null || !link.getHost().equalsIgnoreCase(Uri.parse(server).getHost())) return;
+        WebView webView = getBridge().getWebView();
+        // After the start page, so the back key returns to the shop list.
+        webView.post(() -> webView.loadUrl(link.toString()));
     }
 
     // Same shell as the owner app (native/mobile). Android 15+ draws every app edge to edge,

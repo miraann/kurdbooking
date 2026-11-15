@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.kurdbooking.app",
+      "sha256_cert_fingerprints": [
+        "8F:FC:51:E4:A8:58:41:A0:A8:49:7D:96:D6:5A:AE:5F:EB:23:FA:D7:22:C2:09:37:EA:31:9B:9C:58:5C:03:92",
+        "4A:80:4F:9C:84:42:80:2C:CA:62:FF:7E:2B:58:E2:BE:D3:AF:9A:F9:4B:D4:0C:CB:03:1F:49:BE:42:5A:53:F5"
+      ]
+    }
+  }
+]

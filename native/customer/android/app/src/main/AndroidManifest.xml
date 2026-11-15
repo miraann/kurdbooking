@@ -22,6 +22,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Shop links and QR codes open in the app (Android App Links). Verified through
+                 /.well-known/assetlinks.json on the site, which lists this app's signing keys.
+                 The host comes from build.gradle (appLinkHost). -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="${appLinkHost}" />
+                <data android:pathPrefix="/s/" />
+                <data android:pathPrefix="/ar/s/" />
+                <data android:pathPrefix="/en/s/" />
+            </intent-filter>
+
         </activity>
 
         <provider
