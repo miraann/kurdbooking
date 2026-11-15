@@ -11,7 +11,8 @@
     "test:unit": "node --test \"lib/**/*.test.mjs\"",
     "test:db": "node supabase/tests/db.test.mjs",
     "test": "npm run test:unit && npm run test:db",
-    "db:migrate": "node scripts/db-migrate.mjs"
+    "db:migrate": "node scripts/db-migrate.mjs",
+    "storage:cleanup": "node scripts/cleanup-orphan-storage.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^8.6.0",

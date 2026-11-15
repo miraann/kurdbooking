@@ -143,9 +143,21 @@ npm test
 npm run build
 ```
 
-`npm test` runs every migration on an in-memory Postgres 17 (PGlite) and checks 38 rules:
+`npm test` runs the unit tests (free-slot calculation, the link-preview guard), then every migration on an in-memory Postgres 17 (PGlite) with 163 database checks:
 - tenant isolation
-- RLS for anon, owners and super
+- RLS for anon, owners, staff logins, customers and super
 - double-booking protection
 - payments
 - trial → past due → suspended
+- customer accounts, reviews, blocking, favourites, waitlist, staff logins
+
+## 6. Upkeep
+
+Unused images (replaced logos, photos of deleted rows, uploads whose form was never saved, folders of deleted shops) stay in the `shop-media` bucket. List them, then delete them once you have looked:
+
+```bash
+npm run storage:cleanup
+npm run storage:cleanup -- --apply
+```
+
+The first is a dry run. The script refuses to delete anything if the database seems empty (wrong project or key), and skips files less than a day old.

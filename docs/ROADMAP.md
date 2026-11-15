@@ -93,7 +93,7 @@ A separate app for customers (not the owner `/dashboard` app in `native/mobile`)
 - [ ] Optional face scan and Facebook link at booking (zhewar features), as shop settings
 - [x] **Rate limits** in the database instead of Upstash (`0012_rate_limits.sql`, `lib/rate-limit.ts`): bookings 8 per IP per 10 min, `/signup` orders 5 per hour, both logins 10 per 10 min, reset emails 5 per hour, password change 5 per 10 min per account. Plus the old rule: 3 future bookings per phone
 - [x] **Reminder the day before**: push to customers (above), plus Bookings → «سبەی» in the dashboard with a WhatsApp reminder button per customer (SMS later)
-- [ ] Old-photo cleanup job for storage (zhewar `scripts/cleanup-orphan-storage.mts`)
+- [x] **Old-photo cleanup** for storage: `npm run storage:cleanup` (dry run) / `-- --apply` (`scripts/cleanup-orphan-storage.mjs`, from zhewar). Run by hand: deleting stays a decision
 - [x] **Security headers**: CSP (scripts, frames and connections only from our site, images from Supabase Storage), HSTS, nosniff, frame and referrer rules (`next.config.ts`)
 - [ ] Online payment: FIB or ZainCash API → `record_payment` automatically
 - [ ] Shops' own domains (`shops.custom_domain` exists; needs Vercel Domains API + proxy lookup)
