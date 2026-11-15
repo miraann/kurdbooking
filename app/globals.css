@@ -12,13 +12,24 @@
    ========================================================================== */
 
 /* Fonts per language: Kurdish (Sorani, default) and Arabic. English uses the
-   Kurdish font's Latin letters, then the system font. */
+   Kurdish font's Latin letters with the system font's digits. */
 @font-face {
   font-family: "Kurdish";
   src: url("/font/kurdish.otf") format("opentype");
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
+}
+
+/* The same Kurdish file without 0-9 and %: the font draws them as ٠-٩ and ٪, but
+   English shows 0-9 (lib/format.ts), so English digits come from the system font. */
+@font-face {
+  font-family: "KurdishLatin";
+  src: url("/font/kurdish.otf") format("opentype");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-0024, U+0026-002F, U+003A-10FFFF;
 }
 
 @font-face {
@@ -94,6 +105,12 @@
   :lang(ar) {
     --font-sans: "Arabic", "Kurdish", system-ui, sans-serif;
     --font-display: "Arabic", "Kurdish", serif;
+    font-family: var(--font-sans);
+  }
+  /* English pages: Latin digits (see "KurdishLatin" above). */
+  :lang(en) {
+    --font-sans: "KurdishLatin", system-ui, sans-serif;
+    --font-display: "KurdishLatin", system-ui, serif;
     font-family: var(--font-sans);
   }
 }

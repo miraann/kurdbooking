@@ -1,5 +1,5 @@
 import {
-  CalendarCheck, CalendarClock, Contact, CreditCard, Home, Images, LayoutGrid, Megaphone, Palette, Scissors, Settings, Star, Users,
+  CalendarCheck, CalendarClock, ChartColumn, Contact, CreditCard, Home, Images, LayoutGrid, Megaphone, Palette, Scissors, Settings, Star, Users,
 } from "lucide-react";
 import type { T3 } from "@/lib/i18n/config";
 
@@ -11,6 +11,7 @@ import type { T3 } from "@/lib/i18n/config";
 export const DASHBOARD_LINKS: { href: string; label: T3; short: T3; icon: typeof Home; tab: boolean; staff: boolean }[] = [
   { href: "/dashboard", label: { ckb: "سەرەکی", ar: "الرئيسية", en: "Home" }, short: { ckb: "سەرەکی", ar: "الرئيسية", en: "Home" }, icon: Home, tab: true, staff: true },
   { href: "/dashboard/appointments", label: { ckb: "کاتەکانی سەردانیکردن", ar: "المواعيد", en: "Appointments" }, short: { ckb: "کاتەکان", ar: "المواعيد", en: "Bookings" }, icon: CalendarCheck, tab: true, staff: true },
+  { href: "/dashboard/stats", label: { ckb: "ئامار", ar: "الإحصائيات", en: "Stats" }, short: { ckb: "ئامار", ar: "الإحصائيات", en: "Stats" }, icon: ChartColumn, tab: false, staff: false },
   { href: "/dashboard/services", label: { ckb: "خزمەتگوزارییەکان", ar: "الخدمات", en: "Services" }, short: { ckb: "خزمەت", ar: "الخدمات", en: "Services" }, icon: Scissors, tab: true, staff: false },
   { href: "/dashboard/schedule", label: { ckb: "کاتی کار و پشوو", ar: "أوقات العمل والعطل", en: "Hours and days off" }, short: { ckb: "خشتە", ar: "الجدول", en: "Hours" }, icon: CalendarClock, tab: true, staff: false },
   { href: "/dashboard/staff", label: { ckb: "کارمەندان", ar: "الموظفون", en: "Staff" }, short: { ckb: "کارمەند", ar: "الموظفون", en: "Staff" }, icon: Users, tab: false, staff: false },

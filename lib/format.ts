@@ -83,6 +83,10 @@ export function fmt(lang: Lang) {
     date,
     /** 0 = Sunday … 6 = Saturday */
     day: (dow: number) => DAY_NAMES[lang][dow],
+    /** 1 = January … 12 = December */
+    month: (m: number) => MONTHS[lang][m - 1],
+    /** 45 → "٤٥٪" / "45%" (rounded) */
+    percent: (n: number) => (lang === "en" ? `${Math.round(n)}%` : `${digits(Math.round(n), lang)}٪`),
     minutes: (n: number) => unit(lang, "minute", n),
     days: (n: number) => unit(lang, "day", n),
     months: (n: number) => unit(lang, "month", n),

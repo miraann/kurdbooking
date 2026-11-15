@@ -100,4 +100,4 @@ A separate app for customers (not the owner `/dashboard` app in `native/mobile`)
 - [x] **Three languages: Kurdish Sorani (default), Arabic, English.** Dictionaries in `lib/i18n/dictionaries`, pages under `app/[lang]`, `/ar/…` and `/en/…` URLs, picker on the platform header, shop page, dashboard and `/super`, per-language digits/dates/times, Kurdish and Arabic fonts. Arabic and English texts need a review by a native speaker
 - [x] Customer app: language picker in the header of the shop list (the `kb_lang` cookie keeps the choice, like the website)
 - [ ] Optional Arabic/English fields for shop content the owner types (service names, about)
-- [ ] Stats for owners (bookings per week, top services, no-shows)
+- [x] **Stats for owners** (`/dashboard/stats`, «ئامار»): 30 days / 3 months / 12 months; bookings, completed, no-show rate, estimated income; bookings per day/week/month, statuses, top services, per staff member, busiest days and hours. Hover/focus tooltips and a table view under every chart
