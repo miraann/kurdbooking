@@ -8,7 +8,7 @@ Three thin native shells around the live website. Deploy the website first; the 
 | Owner app (Windows) | `native/windows` | `<site>/dashboard` | |
 | Customer app (Android) | `native/customer` | `<site>/` (the shop list) | `com.kurdbooking.app` |
 
-The app icon comes from `native/icon.svg`. It is a placeholder in zhewar's indigo → violet. Replace it with the final logo.
+The owner app icon comes from `native/icon.svg` (indigo → violet), the customer app icon from `native/icon-customer.svg` (blue → red, same calendar). Both are placeholders until the final logo exists.
 
 ## Android + iOS (Capacitor 8): `native/mobile`
 
@@ -139,7 +139,7 @@ Release builds are signed with the **same upload key** as the owner app: `androi
 
 **Publishing a new APK:** copy `app/build/outputs/apk/release/app-release.apk` to `public/kurdbooking.apk` and deploy. The site serves it at `<site>/kurdbooking.apk` and shows a download link in the footer of the customer pages (browsers only, not iPhones, not inside the app). Raise `versionCode` and `versionName` in `android/app/build.gradle` first, or phones won't install it over the old one.
 
-Still to do: its own final icon (Android 7 still uses the owner app's indigo `mipmap-*` PNGs), push for booking status, an iOS project, a store listing.
+Still to do: the final logo (the customer icon, launch screen and Android 7 PNGs are already blue → red), push for booking status, an iOS project, a store listing.
 
 ## Windows (Tauri 2): `native/windows`
 

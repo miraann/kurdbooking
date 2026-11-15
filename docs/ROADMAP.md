@@ -79,7 +79,7 @@ A separate app for customers (not the owner `/dashboard` app in `native/mobile`)
 - [x] **Ratings & reviews**: the customer rates a booking marked تەواوبوو from `/account` (once, 1–5 stars + optional text; the shop gets a push). Dashboard → Reviews (reply once), rating + reviews on the public shop page and the shop list, hide/show in `/super`. Owners can't delete reviews
 - [x] **Push to customers** (`lib/customer-push.ts`): confirmed, declined, cancelled by the shop, «rate your visit» after تەواوبوو, and a reminder the day before (`/api/cron/reminders`, daily Vercel cron, `0014_reminders.sql`). Works in browsers (alerts card in `/account`); the customer Android app needs its own Firebase registration first (see Phase 5)
 - [x] Capacitor project for the customer app: `native/customer` (`com.kurdbooking.app`, opens `/`, blue→red icon), signed APK served at `/kurdbooking.apk` with a download link on the customer pages (browsers only)
-- [ ] Customer app: final icon (Android 7 still shows the owner app's indigo PNGs), iOS project, store listing
+- [x] Customer app 1.3: own blue → red icon (`native/icon-customer.svg`), launch screen and Android 7 icons\n- [ ] Customer app: final logo, iOS project, store listing
 - [x] Device-saved "my bookings" removed (`/s/<slug>/my-bookings` redirects to `/account`)
 
 ## 🔜 Phase 7: Next features

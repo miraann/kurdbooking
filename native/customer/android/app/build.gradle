@@ -16,8 +16,8 @@ android {
         applicationId "com.kurdbooking.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 3
-        versionName "1.2"
+        versionCode 4
+        versionName "1.3"
         // Shop links on this host open in the app (AndroidManifest.xml → App Links). Change it
         // with -PkbAppLinkHost=kurdbooking.com once the domain is bought, and list the app's key
         // in that site's /.well-known/assetlinks.json.
