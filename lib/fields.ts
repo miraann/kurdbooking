@@ -44,6 +44,8 @@ export interface ActionState {
   values?: Record<string, string>;
   /** Bumped on every submit so the form remounts with fresh defaults. */
   nonce?: number;
+  /** Multi-step forms (customer signup / reset): "code" = a WhatsApp code was sent, ask for it. */
+  step?: "code";
 }
 
 export const initialActionState: ActionState = { ok: false };

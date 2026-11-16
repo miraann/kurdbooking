@@ -19,6 +19,8 @@ export function BookingForm(props: {
   slug: string;
   base: string;
   viewer: Viewer;
+  /** WhatsApp is set up: the login shows «forgot password». */
+  canReset?: boolean;
   today: string;
   maxDaysAhead: number;
   autoConfirm: boolean;
@@ -245,7 +247,7 @@ export function BookingForm(props: {
           ) : (
             <div className="space-y-4">
               <p className="text-sm font-medium leading-relaxed text-neutral-600">{b.needProfile}</p>
-              <CustomerAuth />
+              <CustomerAuth canReset={props.canReset} />
             </div>
           )}
         </Step>

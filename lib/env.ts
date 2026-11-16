@@ -35,4 +35,23 @@ export const env = {
   /** e.g. "kurdbooking.com" or "localhost:3000". Empty = shops live at /s/<slug>. */
   rootDomain: () => (process.env.NEXT_PUBLIC_ROOT_DOMAIN || "").toLowerCase().trim(),
   supportWhatsapp: () => process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP || "",
+  /**
+   * WhatsApp Cloud API (Meta), for phone verification codes. null = not set up:
+   * customers then sign up without a code. See docs/whatsapp-setup.md.
+   */
+  whatsapp: () => {
+    const token = process.env.WHATSAPP_ACCESS_TOKEN?.trim();
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID?.trim();
+    const template = process.env.WHATSAPP_TEMPLATE_NAME?.trim();
+    if (!token || !phoneNumberId || !template) return null;
+    return {
+      token,
+      phoneNumberId,
+      template,
+      // Authentication templates can't be written in Kurdish (Meta has no
+      // Kurdish template language); Arabic is what people here read.
+      language: process.env.WHATSAPP_TEMPLATE_LANG?.trim() || "ar",
+      version: process.env.WHATSAPP_API_VERSION?.trim() || "v23.0",
+    };
+  },
 };

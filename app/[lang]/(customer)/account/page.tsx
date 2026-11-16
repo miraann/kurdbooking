@@ -12,6 +12,7 @@ import { APPOINTMENT_STATUS } from "@/lib/labels";
 import type { AppointmentStatus } from "@/lib/types";
 import { Heading, LogoRing, RING } from "@/components/shop/theme";
 import { Stars } from "@/components/ui/Stars";
+import { whatsappEnabled } from "@/lib/whatsapp.server";
 import { CustomerAuth } from "./CustomerAuth";
 import { CancelBooking } from "./CancelBooking";
 import { ReviewForm } from "./ReviewForm";
@@ -39,7 +40,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/[lang]/a
           <p className="mx-auto mt-4 max-w-sm text-balance text-[0.95rem] font-medium leading-relaxed text-neutral-500">{a.guestText}</p>
         </Heading>
         <div className="card-shop">
-          <CustomerAuth next={next} />
+          <CustomerAuth next={next} canReset={whatsappEnabled()} />
         </div>
       </main>
     );

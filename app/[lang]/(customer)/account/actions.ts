@@ -8,6 +8,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { customerEmail, getViewer, isCustomerMeta } from "@/lib/customer";
 import { allowAttempt } from "@/lib/rate-limit";
+import { checkPhoneCode, sendPhoneCode } from "@/lib/phone-code.server";
+import { whatsappEnabled } from "@/lib/whatsapp.server";
 import { displayPhone, fill, fmt, normalizePhone } from "@/lib/format";
 import { notifyShop } from "@/lib/push";
 import { notifyWaitlist } from "@/lib/waitlist.server";
@@ -28,11 +30,32 @@ function goNext(next: unknown, href: (path: string) => string): void {
   redirect(splitLocale(next).prefix ? next : href(next));
 }
 
+/** The customer account of a phone, or null (0018 customer_user_id). */
+async function customerIdOf(phone: string): Promise<string | null> {
+  const { data } = await createAdminClient().rpc("customer_user_id", { p_phone: phone });
+  return typeof data === "string" ? data : null;
+}
+
+type CodeErrors = { codeFailed: string; codeWrong: string };
+
+/** Sends a WhatsApp code and reports it as the "enter the code" step (or the reason it failed). */
+async function sendCodeStep(
+  phone: string,
+  purpose: "signup" | "reset",
+  e: CodeErrors,
+  tooFast: string,
+  values: Record<string, string>,
+): Promise<ActionState> {
+  const sent = await sendPhoneCode(phone, purpose);
+  if (sent === "sent") return { ok: false, step: "code", values, nonce: Date.now() };
+  return { ok: false, message: sent === "too_fast" ? tooFast : e.codeFailed, values, nonce: Date.now() };
+}
+
 export async function customerSignup(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { t, href } = await getActionI18n();
   const e = t.account.errors;
   const values = { full_name: String(formData.get("full_name") ?? ""), phone: String(formData.get("phone") ?? "") };
-  const fail = (message?: string): ActionState => ({ ok: false, message, values, nonce: Date.now() });
+  const fail = (message?: string, step?: "code"): ActionState => ({ ok: false, message, step, values, nonce: Date.now() });
 
   const parsed = z
     .object({
@@ -46,6 +69,16 @@ export async function customerSignup(_prev: ActionState, formData: FormData): Pr
   if (!phone) return fail(e.phone);
   if (!(await allowAttempt("customerSignup"))) return fail(t.errors.tooFast);
 
+  // With WhatsApp set up, the phone must be proven first: the first submit
+  // sends a code, the second (with the code) creates the profile.
+  const verify = whatsappEnabled();
+  if (verify) {
+    if (await customerIdOf(phone)) return fail(e.exists);
+    const code = String(formData.get("code") ?? "").trim();
+    if (!code || formData.get("resend")) return sendCodeStep(phone, "signup", e, t.errors.tooFast, values);
+    if (!(await checkPhoneCode(phone, "signup", code))) return fail(e.codeWrong, "code");
+  }
+
   // Created confirmed (there is no email to confirm). app_metadata marks the
   // account as a customer and holds the phone; only the server can change it.
   const admin = createAdminClient();
@@ -54,7 +87,7 @@ export async function customerSignup(_prev: ActionState, formData: FormData): Pr
     password: parsed.data.password,
     email_confirm: true,
     user_metadata: { full_name: parsed.data.full_name, phone },
-    app_metadata: { kind: "customer", phone },
+    app_metadata: { kind: "customer", phone, ...(verify ? { phone_verified: true } : {}) },
   });
   if (error) {
     const exists = error.code === "email_exists" || /already/i.test(error.message);
@@ -64,6 +97,47 @@ export async function customerSignup(_prev: ActionState, formData: FormData): Pr
 
   const supabase = await createClient();
   const { error: loginError } = await supabase.auth.signInWithPassword({ email: customerEmail(phone), password: parsed.data.password });
+  if (loginError) return fail(e.failed);
+
+  goNext(formData.get("next"), href);
+  return { ok: true, nonce: Date.now() };
+}
+
+/**
+ * Forgot password: a WhatsApp code proves the phone, then the new password is
+ * set and the customer is logged in. Needs WhatsApp to be set up; without it a
+ * forgotten password can't be recovered by the customer.
+ */
+export async function customerResetPassword(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { t, href } = await getActionI18n();
+  const e = t.account.errors;
+  const values = { phone: String(formData.get("phone") ?? "") };
+  const fail = (message?: string, step?: "code"): ActionState => ({ ok: false, message, step, values, nonce: Date.now() });
+
+  const phone = normalizePhone(values.phone);
+  if (!phone) return fail(e.phone);
+  if (!whatsappEnabled()) return fail(e.resetUnavailable);
+  const userId = await customerIdOf(phone);
+  if (!userId) return fail(e.noProfile);
+
+  const code = String(formData.get("code") ?? "").trim();
+  if (!code || formData.get("resend")) return sendCodeStep(phone, "reset", e, t.errors.tooFast, values);
+
+  const password = String(formData.get("password") ?? "");
+  if (password.length < 6) return fail(e.password, "code");
+  if (password.length > 72) return fail(e.passwordLong, "code");
+  if (!(await checkPhoneCode(phone, "reset", code))) return fail(e.codeWrong, "code");
+
+  const { error } = await createAdminClient().auth.admin.updateUserById(userId, {
+    password,
+    app_metadata: { kind: "customer", phone, phone_verified: true },
+  });
+  if (error) {
+    console.error("customer password reset failed", error.code, error.message);
+    return fail(e.failed);
+  }
+  const supabase = await createClient();
+  const { error: loginError } = await supabase.auth.signInWithPassword({ email: customerEmail(phone), password });
   if (loginError) return fail(e.failed);
 
   goNext(formData.get("next"), href);

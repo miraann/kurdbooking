@@ -5,19 +5,37 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { useFormStatus } from "react-dom";
 import { initialActionState } from "@/lib/fields";
 import { useI18n } from "@/components/i18n/I18nProvider";
-import { customerLogin, customerSignup } from "./actions";
+import type { ActionState } from "@/lib/fields";
+import { customerLogin, customerResetPassword, customerSignup } from "./actions";
 
-type Mode = "signup" | "login";
+type Mode = "signup" | "login" | "reset";
 
 /**
  * Create a profile (name, phone, password) or log in with phone + password.
  * Used on /account and inside the booking page's last step. Without `next`
  * the page it is on re-renders logged in (the session cookie changed).
+ *
+ * With WhatsApp set up, signup asks for a code sent to the phone, and
+ * `canReset` shows «forgot password» (also a WhatsApp code).
  */
-export function CustomerAuth({ next, startWith = "signup" }: { next?: string; startWith?: Mode }) {
+export function CustomerAuth({ next, startWith = "signup", canReset = false }: { next?: string; startWith?: Mode; canReset?: boolean }) {
   const { t } = useI18n();
   const a = t.account;
   const [mode, setMode] = useState<Mode>(startWith);
+  if (mode === "reset") {
+    return (
+      <div className="space-y-4">
+        <div className="space-y-1 text-center">
+          <h2 className="text-lg font-extrabold text-neutral-900">{a.resetTitle}</h2>
+          <p className="text-sm font-medium text-neutral-500">{a.resetText}</p>
+        </div>
+        <ResetForm next={next} />
+        <button type="button" onClick={() => setMode("login")} className="w-full touch-manipulation text-sm font-bold text-neutral-500 underline-offset-4 hover:underline">
+          {a.backToLogin}
+        </button>
+      </div>
+    );
+  }
   return (
     <div className="space-y-4">
       <div role="tablist" className="grid grid-cols-2 gap-1 rounded-2xl bg-neutral-100 p-1">
@@ -37,14 +55,42 @@ export function CustomerAuth({ next, startWith = "signup" }: { next?: string; st
         ))}
       </div>
       {mode === "signup" ? <SignupForm next={next} /> : <LoginForm next={next} />}
+      {mode === "login" && canReset && (
+        <button type="button" onClick={() => setMode("reset")} className="w-full touch-manipulation text-sm font-bold text-neutral-500 underline-offset-4 hover:underline">
+          {a.forgot}
+        </button>
+      )}
     </div>
   );
 }
 
+/** Keeps the password in the browser between the two steps (the server never sends it back). */
+type Step = (prev: ActionState, fd: FormData) => Promise<ActionState>;
+const keepPassword =
+  (run: Step): Step =>
+  async (prev, fd) => {
+    const r = await run(prev, fd);
+    return { ...r, values: { ...r.values, password: String(fd.get("password") ?? "") } };
+  };
+
 function SignupForm({ next }: { next?: string }) {
   const { t } = useI18n();
   const a = t.account;
-  const [state, action] = useActionState(customerSignup, initialActionState);
+  const [state, action] = useActionState(keepPassword(customerSignup), initialActionState);
+  if (state.step === "code") {
+    return (
+      <form action={action} key={state.nonce ?? 0} className="space-y-3">
+        {next && <input type="hidden" name="next" value={next} />}
+        <input type="hidden" name="full_name" value={state.values?.full_name ?? ""} />
+        <input type="hidden" name="phone" value={state.values?.phone ?? ""} />
+        <input type="hidden" name="password" value={state.values?.password ?? ""} />
+        <CodeFields phone={state.values?.phone} />
+        {state.message && <ErrorBox message={state.message} />}
+        <Submit>{a.verify}</Submit>
+        <ResendButton />
+      </form>
+    );
+  }
   return (
     <form action={action} key={state.nonce ?? 0} className="space-y-3">
       {next && <input type="hidden" name="next" value={next} />}
@@ -60,6 +106,81 @@ function SignupForm({ next }: { next?: string }) {
       {state.message && <ErrorBox message={state.message} />}
       <Submit>{a.signup}</Submit>
     </form>
+  );
+}
+
+/** Forgot password: phone, then the WhatsApp code and a new password. */
+function ResetForm({ next }: { next?: string }) {
+  const { t } = useI18n();
+  const a = t.account;
+  const [state, action] = useActionState(customerResetPassword, initialActionState);
+  if (state.step === "code") {
+    return (
+      <form action={action} key={state.nonce ?? 0} className="space-y-3">
+        {next && <input type="hidden" name="next" value={next} />}
+        <input type="hidden" name="phone" value={state.values?.phone ?? ""} />
+        <CodeFields phone={state.values?.phone} />
+        <Field label={a.newPassword} help={a.passwordHelp}>
+          <input name="password" type="password" dir="ltr" required minLength={6} maxLength={72} autoComplete="new-password" className="input-shop" />
+        </Field>
+        {state.message && <ErrorBox message={state.message} />}
+        <Submit>{a.resetButton}</Submit>
+        <ResendButton />
+      </form>
+    );
+  }
+  return (
+    <form action={action} key={state.nonce ?? 0} className="space-y-3">
+      {next && <input type="hidden" name="next" value={next} />}
+      <Field label={a.phone}>
+        <input name="phone" type="tel" inputMode="tel" dir="ltr" required defaultValue={state.values?.phone} placeholder="07XX XXX XXXX" autoComplete="tel" className="input-shop" />
+      </Field>
+      {state.message && <ErrorBox message={state.message} />}
+      <Submit>{a.sendCode}</Submit>
+    </form>
+  );
+}
+
+/** «We sent a code to this number», and the box for it. */
+function CodeFields({ phone }: { phone?: string }) {
+  const { t } = useI18n();
+  const a = t.account;
+  return (
+    <>
+      <p className="text-sm font-medium leading-relaxed text-neutral-600">
+        {a.codeText}
+        {phone && (
+          <>
+            {" "}
+            <span dir="ltr" className="inline-block font-bold text-neutral-900">{phone}</span>
+          </>
+        )}
+      </p>
+      <Field label={a.code}>
+        <input
+          name="code"
+          inputMode="numeric"
+          dir="ltr"
+          required
+          autoFocus
+          maxLength={12}
+          autoComplete="one-time-code"
+          placeholder="------"
+          className="input-shop text-center text-xl font-bold tracking-[0.4em]"
+        />
+      </Field>
+    </>
+  );
+}
+
+/** Submits the form without a code: the server answers with a new one. */
+function ResendButton() {
+  const { t } = useI18n();
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" name="resend" value="1" formNoValidate disabled={pending} className="w-full touch-manipulation text-sm font-bold text-neutral-500 underline-offset-4 hover:underline disabled:opacity-50">
+      {t.account.resend}
+    </button>
   );
 }
 

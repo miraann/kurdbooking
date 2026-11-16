@@ -18,7 +18,7 @@ Every page lives under `app/[lang]/` (see **Languages** below), so the folders a
 - **Customer side** (`app/[lang]/(customer)`):
   - The home page `/` lists every live shop that is listed (`listed_shops()`, cached under `LISTED_SHOPS_TAG`), with a type filter and search. Browsing needs no account.
   - **Booking needs a customer profile:** name + phone + password. The booking page's last step signs up or logs in in place, keeping the chosen time. `/account` is the profile: bookings in every shop with their status (`my_appointments()`), cancel, log out.
-  - Customer profiles are Supabase Auth users with a stand-in email `<phone>@phone.invalid` and `app_metadata = { kind: "customer", phone }` (`lib/customer.ts`). `getViewer()` tells guest / customer / staff. The phone is **not verified yet** (a WhatsApp code is planned).
+  - Customer profiles are Supabase Auth users with a stand-in email `<phone>@phone.invalid` and `app_metadata = { kind: "customer", phone }` (`lib/customer.ts`). `getViewer()` tells guest / customer / staff. The phone is verified by a WhatsApp code (Meta Cloud API, `lib/phone-code.server.ts`, `docs/whatsapp-setup.md`) **only when the `WHATSAPP_*` secrets are set**; without them signup needs no code and «forgot password» is hidden.
   - The customer Android app (`native/customer`, `com.kurdbooking.app`) opens `/`. Its APK is served at `/kurdbooking.apk` (`public/`).
 
 Setup and commands are in `README.md`. What is built and what is next is in `docs/ROADMAP.md`.

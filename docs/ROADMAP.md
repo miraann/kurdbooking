@@ -63,11 +63,11 @@ A separate app for customers (not the owner `/dashboard` app in `native/mobile`)
 - [x] «پیشاندان لە ئەپ» switch: `shops.listed` (default on), switch in Dashboard → Settings; `/super` shop page can hide a shop from the app. Hidden shops still work by link/QR
 - [x] Shop page inside the app: the same `/s/<slug>`, readable without an account
 - [x] Customer accounts with Supabase Auth: **phone number + password** (2026-11-14). Browsing needs no account; **a profile is required only to book.** `/account` signs up / logs in. Supabase has no phone login without an SMS provider, so the login is a stand-in email `<phone>@phone.invalid` (undeliverable) and the phone sits in `app_metadata` (`lib/customer.ts`).
-- [ ] Verify the phone (until then anyone can register any number, and a forgotten customer password can't be reset):
-  - Signup and "forgot password" verify the phone with a 6-digit code sent over **WhatsApp (Meta WhatsApp Cloud API)**, through Supabase's *Send SMS* auth hook (no Twilio).
+- [x] **Verify the phone with a WhatsApp code** (2026-11-16, `0018_phone_codes.sql`, `lib/whatsapp.server.ts`, `lib/phone-code.server.ts`, setup in `docs/whatsapp-setup.md`): built and tested in the database; **switched on by three secrets** (`WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_TEMPLATE_NAME`). Until they are set, signup works without a code and «forgot password» is hidden.
+  - Signup: first submit sends the code, second (with the code) creates the profile (`app_metadata.phone_verified`). «Forgot password» (login tab): phone → code → new password. Own code table instead of Supabase's Send SMS hook, because accounts are email-stand-in users.
   - Normal login is phone + password, so it sends no message and costs nothing.
-  - Needs: Meta Business account, WhatsApp Business number, an approved *authentication* message template (Kurdish), access token stored as a secret.
-  - Cost: about $0.008 per code in Iraq (check Meta's live rate card); SMS fallback can be added later for customers without WhatsApp.
+  - Still needs **you**: Meta Business account (+ verification), a WhatsApp number, an approved *Authentication* template (Arabic: Meta has no Kurdish template language), a permanent token, a payment method. Not yet tried against real Meta.
+  - Cost: Meta bills each code (about a cent in Iraq; check the live rate card). Caps: 10 per visitor/h, 5 per phone/h, 500/day. SMS fallback can be added later.
 - [x] Link the account to the `customers` row of each shop it books at (`customers.user_id`, `0008`)
 - [x] RLS: a customer reads only their own appointments, in every shop; `customers` and `appointments` stay non-public otherwise
 - [x] Booking flow asks for a profile at the moment of booking (the last step signs up / logs in in place and keeps the chosen service/staff/time); `book/actions.ts` takes the customer from the session, not from the form

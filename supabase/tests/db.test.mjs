@@ -45,7 +45,7 @@ await db.exec(`
 `);
 
 // 0006 (pg_cron schedule) needs the cron extension, which PGlite doesn't have.
-for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql', '0009_shop_requests.sql', '0010_web_push.sql', '0011_native_push.sql', '0012_rate_limits.sql', '0013_favorites.sql', '0014_reminders.sql', '0015_staff_logins.sql', '0016_waitlist.sql', '0017_notification_sound.sql']) {
+for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql', '0009_shop_requests.sql', '0010_web_push.sql', '0011_native_push.sql', '0012_rate_limits.sql', '0013_favorites.sql', '0014_reminders.sql', '0015_staff_logins.sql', '0016_waitlist.sql', '0017_notification_sound.sql', '0018_phone_codes.sql']) {
   try { await db.exec(readFileSync(new URL(f, MIG), 'utf8')); console.log('applied', f); }
   catch (e) { console.log('MIGRATION FAILED', f, e.message, e.position ?? ''); process.exit(1); }
 }
@@ -448,6 +448,39 @@ ok('a person picks their own sound', (await db.query(`select notification_sound 
 await expectError('unknown sound is refused', `update public.profiles set notification_sound='evil' where id=$1`, [users.ali], 'check constraint');
 ok("cannot change someone else's sound", (await db.query(`update public.profiles set notification_sound='chime' where id=$1`, [users.sara])).affectedRows === 0);
 await as(null);
+
+// ── WhatsApp phone codes (0018) ─────────────────────────────────────────────
+await as('service_role');
+ok('first code is stored', (await db.query(`select public.issue_phone_code('9647701111111','signup','h1',600,60) r`)).rows[0].r === true);
+ok('a second code within the cooldown is refused', (await db.query(`select public.issue_phone_code('9647701111111','signup','h2',600,60) r`)).rows[0].r === false);
+ok('another purpose has its own cooldown', (await db.query(`select public.issue_phone_code('9647701111111','reset','h3',600,60) r`)).rows[0].r === true);
+ok('wrong code is refused', (await db.query(`select public.check_phone_code('9647701111111','signup','nope') r`)).rows[0].r === false);
+ok('right code is accepted', (await db.query(`select public.check_phone_code('9647701111111','signup','h1') r`)).rows[0].r === true);
+ok('a code works only once', (await db.query(`select public.check_phone_code('9647701111111','signup','h1') r`)).rows[0].r === false);
+await db.query(`select public.issue_phone_code('9647702222222','signup','good',600,0)`);
+for (let i = 0; i < 5; i++) await db.query(`select public.check_phone_code('9647702222222','signup','bad${i}')`);
+ok('after 5 wrong guesses even the right code is refused', (await db.query(`select public.check_phone_code('9647702222222','signup','good') r`)).rows[0].r === false);
+ok('a new code starts the guesses again', (await db.query(`select public.issue_phone_code('9647702222222','signup','good2',600,0) r`)).rows[0].r === true
+  && (await db.query(`select public.check_phone_code('9647702222222','signup','good2') r`)).rows[0].r === true);
+await db.query(`select public.issue_phone_code('9647703333333','signup','old',600,0)`);
+await as(null);
+await db.query(`update public.phone_codes set expires_at = now() - interval '1 minute' where phone='9647703333333'`);
+await as('service_role');
+ok('an expired code is refused', (await db.query(`select public.check_phone_code('9647703333333','signup','old') r`)).rows[0].r === false);
+await as(null);
+const codeCust = (await db.query(`insert into auth.users (email) values ('9647704444444@phone.invalid') returning id`)).rows[0].id;
+await as('service_role');
+ok('customer_user_id finds the account of a phone', (await db.query(`select public.customer_user_id('9647704444444') r`)).rows[0].r === codeCust);
+ok('customer_user_id is null for an unknown phone', (await db.query(`select public.customer_user_id('9647705555555') r`)).rows[0].r === null);
+for (const who of ['anon', 'authenticated']) {
+  await as(who);
+  await expectError(`${who} cannot read the codes`, `select * from public.phone_codes`, [], 'permission denied');
+  await expectError(`${who} cannot issue a code`, `select public.issue_phone_code('9647706666666','signup','x')`, [], 'permission denied');
+  await expectError(`${who} cannot check a code`, `select public.check_phone_code('9647706666666','signup','x')`, [], 'permission denied');
+  await expectError(`${who} cannot look up accounts by phone`, `select public.customer_user_id('9647704444444')`, [], 'permission denied');
+}
+await as(null);
+await db.query(`delete from auth.users where id=$1`, [codeCust]);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -5,6 +5,7 @@ import { getPublicShop, getShopContent } from "@/lib/shop-data";
 import { mainSiteLink, shopBasePath } from "@/lib/tenant";
 import { addDays, isDateKey, todayKey } from "@/lib/booking";
 import { getViewer } from "@/lib/customer";
+import { whatsappEnabled } from "@/lib/whatsapp.server";
 import { Heading } from "@/components/shop/theme";
 import { BookingForm } from "./BookingForm";
 
@@ -43,6 +44,7 @@ export default async function BookPage({ params, searchParams }: PageProps<"/[la
         slug={slug}
         base={base}
         viewer={viewer}
+        canReset={whatsappEnabled()}
         today={today}
         initialDate={wantDate}
         initialService={wantService}

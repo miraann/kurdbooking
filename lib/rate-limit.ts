@@ -18,6 +18,10 @@ export const LIMITS = {
   passwordChange: { max: 5, windowSeconds: 10 * 60 }, // Settings, per account
   linkPreview: { max: 20, windowSeconds: 10 * 60 }, // post link previews (fetches other sites), per account
   waitlist: { max: 10, windowSeconds: 10 * 60 }, // joining waitlists, per account
+  // WhatsApp codes cost money per message (Meta bills each one), so three caps:
+  whatsappCode: { max: 10, windowSeconds: 60 * 60 }, // per IP
+  whatsappPhone: { max: 5, windowSeconds: 60 * 60 }, // per phone number
+  whatsappDaily: { max: 500, windowSeconds: 24 * 60 * 60 }, // the whole site
 } as const;
 
 export type LimitKind = keyof typeof LIMITS;
