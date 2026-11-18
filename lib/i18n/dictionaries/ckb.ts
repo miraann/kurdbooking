@@ -509,7 +509,7 @@ const ckb = {
     home: "سەرەکی",
     map: "نەخشە",
     favorites: "دڵخواز",
-    notifications: "ئاگادارکردنەوە",
+    notifications: "ئاگاداری", // short on purpose: five tabs on a 360px phone (the page title is the full «ئاگادارکردنەوەکان»)
     profile: "پرۆفایل",
     unread: "{n} ئاگادارکردنەوەی نەخوێندراوە",
     signIn: "چوونەژوورەوە یان دروستکردنی پرۆفایل",

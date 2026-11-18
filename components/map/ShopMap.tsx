@@ -120,7 +120,11 @@ export function ShopMap({ pins }: { pins: MapPin[] }) {
       {!ready && <div className="absolute inset-0 z-[1100] animate-pulse bg-neutral-100" aria-hidden />}
 
       {ready && pins.length === 0 && (
-        <p className="absolute inset-x-4 top-14 z-[1100] mx-auto max-w-sm rounded-2xl bg-white/95 px-4 py-3 text-center text-sm font-medium text-neutral-600 shadow-lg">
+        // At the bottom, above the tab bar: the top corners hold the zoom buttons and the attribution.
+        <p
+          className="absolute inset-x-4 z-[1100] mx-auto max-w-sm rounded-2xl bg-white/95 px-4 py-3 text-center text-sm font-medium text-neutral-600 shadow-lg md:bottom-4"
+          style={{ bottom: "calc(5.75rem + env(safe-area-inset-bottom, 0px))" }}
+        >
           {t.mapPage.empty}
         </p>
       )}
