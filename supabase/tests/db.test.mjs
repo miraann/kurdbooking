@@ -45,7 +45,7 @@ await db.exec(`
 `);
 
 // 0006 (pg_cron schedule) needs the cron extension, which PGlite doesn't have.
-for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql', '0009_shop_requests.sql', '0010_web_push.sql', '0011_native_push.sql', '0012_rate_limits.sql', '0013_favorites.sql', '0014_reminders.sql', '0015_staff_logins.sql', '0016_waitlist.sql', '0017_notification_sound.sql', '0018_phone_codes.sql']) {
+for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql', '0009_shop_requests.sql', '0010_web_push.sql', '0011_native_push.sql', '0012_rate_limits.sql', '0013_favorites.sql', '0014_reminders.sql', '0015_staff_logins.sql', '0016_waitlist.sql', '0017_notification_sound.sql', '0018_phone_codes.sql', '0019_customer_notifications.sql']) {
   try { await db.exec(readFileSync(new URL(f, MIG), 'utf8')); console.log('applied', f); }
   catch (e) { console.log('MIGRATION FAILED', f, e.message, e.position ?? ''); process.exit(1); }
 }
@@ -481,6 +481,43 @@ for (const who of ['anon', 'authenticated']) {
 }
 await as(null);
 await db.query(`delete from auth.users where id=$1`, [codeCust]);
+
+// ── Customer notification inbox (0019) ──────────────────────────────────────
+await as(null); // the server (secret key) is the superuser here
+const inAppt = (await db.query(`select id, public_token from public.appointments where shop_id=$1 limit 1`, [shopA])).rows[0];
+await db.query(`insert into public.customer_notifications (user_id, shop_id, kind, appointment_id) values ($1,$2,'confirmed',$3)`, [users.kawa, shopA, inAppt.id]);
+await db.query(`insert into public.customer_notifications (user_id, shop_id, kind, appointment_id) values ($1,$2,'reminder',$3)`, [users.kawa, shopA, inAppt.id]);
+await db.query(`insert into public.customer_notifications (user_id, shop_id, kind, for_date) values ($1,$2,'waitlist',current_date + 2)`, [users.kawa, shopA]);
+await expectError('a booking is reminded only once', `insert into public.customer_notifications (user_id, shop_id, kind, appointment_id) values ($1,$2,'reminder',$3)`, [users.kawa, shopA, inAppt.id], 'duplicate key');
+await expectError('a booking event needs the booking', `insert into public.customer_notifications (user_id, shop_id, kind) values ($1,$2,'confirmed')`, [users.kawa, shopA], 'check constraint');
+await expectError('a waitlist alert needs the day', `insert into public.customer_notifications (user_id, shop_id, kind) values ($1,$2,'waitlist')`, [users.kawa, shopA], 'check constraint');
+await expectError('unknown kinds are refused', `insert into public.customer_notifications (user_id, shop_id, kind, appointment_id) values ($1,$2,'spam',$3)`, [users.kawa, shopA, inAppt.id], 'check constraint');
+
+await as('authenticated', users.kawa);
+const inbox = (await db.query(`select * from public.my_notifications()`)).rows;
+ok('customer reads their inbox', inbox.length === 3 && inbox.every((n) => n.shop_name === 'Ali Barber' && n.shop_slug === 'ali-barber'), JSON.stringify(inbox));
+ok('inbox rows carry the booking to open', inbox.filter((n) => n.kind !== 'waitlist').every((n) => n.public_token === inAppt.public_token && n.starts_at));
+ok('a waitlist row carries its day', inbox.some((n) => n.kind === 'waitlist' && n.for_date));
+ok('unread rows are counted through RLS', (await db.query(`select count(*)::int c from public.customer_notifications where read_at is null`)).rows[0].c === 3);
+await expectError('customer cannot write the inbox', `insert into public.customer_notifications (user_id, shop_id, kind, appointment_id) values ($1,$2,'confirmed',$3)`, [users.kawa, shopA, inAppt.id], 'permission denied');
+await expectError('only read_at can change', `update public.customer_notifications set kind='declined'`, [], 'permission denied');
+ok('customer marks everything read', (await db.query(`update public.customer_notifications set read_at=now() where read_at is null`)).affectedRows === 3);
+ok('nothing stays unread', (await db.query(`select count(*)::int c from public.customer_notifications where read_at is null`)).rows[0].c === 0);
+
+await as('authenticated', users.ali);
+ok('other accounts see an empty inbox', (await db.query(`select * from public.my_notifications()`)).rows.length === 0);
+ok("other accounts cannot read someone else's rows", (await db.query(`select * from public.customer_notifications`)).rows.length === 0);
+ok("other accounts cannot mark someone else's rows read", (await db.query(`update public.customer_notifications set read_at=null`)).affectedRows === 0);
+ok("other accounts cannot delete someone else's rows", (await db.query(`delete from public.customer_notifications`)).affectedRows === 0);
+await as('anon');
+await expectError('anon cannot read the inbox', `select * from public.customer_notifications`, [], 'permission denied');
+await expectError('anon cannot list the inbox', `select * from public.my_notifications()`, [], 'permission denied');
+
+await as('authenticated', users.kawa);
+ok('customer deletes one notification', (await db.query(`delete from public.customer_notifications where kind='waitlist'`)).affectedRows === 1);
+await as(null);
+await db.query(`delete from public.appointments where id=$1`, [inAppt.id]);
+ok('deleting a booking removes its notifications', (await db.query(`select count(*)::int c from public.customer_notifications`)).rows[0].c === 0);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

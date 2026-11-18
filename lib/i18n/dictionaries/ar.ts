@@ -499,6 +499,35 @@ const ar: Dict = {
     androidApp: "حمّل تطبيق أندرويد",
   },
 
+  // ── Customer app: bottom tab bar, favourites and notifications pages ──────
+  customerNav: {
+    label: "التنقل في التطبيق",
+    home: "الرئيسية",
+    favorites: "المفضلة",
+    notifications: "الإشعارات",
+    profile: "حسابي",
+    unread: "{n} إشعارات غير مقروءة",
+    signIn: "تسجيل الدخول أو إنشاء ملف شخصي",
+  },
+  favoritesPage: {
+    metaTitle: "المحلات المفضلة",
+    title: "محلاتي المفضلة",
+    subtitle: "المحلات التي أضفتها بالقلب، تجدها هنا بسرعة.",
+    guestText: "سجّل الدخول لتحفظ محلاتك المفضلة وتجدها هنا.",
+    empty: "لم تحفظ أي محل بعد.",
+    emptyHelp: "اضغط على القلب ♥ في صفحة أي محل ليظهر هنا.",
+    browse: "تصفّح المحلات",
+  },
+  notificationsPage: {
+    metaTitle: "الإشعارات",
+    title: "الإشعارات",
+    subtitle: "كل ما أخبرتك به المحلات عن مواعيدك.",
+    guestText: "سجّل الدخول لترى إشعاراتك.",
+    empty: "لا توجد إشعارات بعد.",
+    emptyHelp: "عندما يؤكد المحل موعدك، أو قبل موعدك بيوم، سيظهر ذلك هنا.",
+    newOne: "جديد",
+  },
+
   push: {
     title: "الإشعارات",
     onHelp: "تصل الإشعارات (مواعيد جديدة، طلبات جديدة) إلى هذا الجهاز.",

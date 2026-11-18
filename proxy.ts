@@ -9,7 +9,7 @@
 //    Only when NEXT_PUBLIC_ROOT_DOMAIN is set. Without it, shops live at
 //    /s/<slug> on the main site and nothing is rewritten.
 // 3. Pages that read the login (/dashboard, /super, /login, /reset-password,
-//    and the customer's /account and booking page): refreshes the Supabase
+//    and the customer's /account, /favorites, /notifications and booking page): refreshes the Supabase
 //    session cookie (Server Components can't write it). Logged-out visitors of
 //    /dashboard and /super go to their login: /login for shops, /super/login
 //    for the super admin (two separate logins). Customers need a profile only
@@ -38,7 +38,7 @@ function shopSlugFromHost(host: string): string | null {
 const PROTECTED = ["/dashboard", "/super"];
 const SUPER_LOGIN = "/super/login";
 // /reset-password: the reset link's session must stay fresh (no redirect there).
-const NEEDS_SESSION = [...PROTECTED, "/login", "/reset-password", "/account"];
+const NEEDS_SESSION = [...PROTECTED, "/login", "/reset-password", "/account", "/favorites", "/notifications"];
 const under = (path: string, list: string[]) => list.some((p) => path === p || path.startsWith(`${p}/`));
 /** The booking page: /s/<slug>/book on the main site, /book on a shop subdomain. */
 const isBookPage = (path: string, onSubdomain: boolean) => (onSubdomain ? path === "/book" : /^\/s\/[^/]+\/book$/.test(path));

@@ -1,11 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendPush } from "@/lib/push";
 import { addDays, todayKey } from "@/lib/booking";
 import { fmt } from "@/lib/format";
-import { customerMessage } from "@/lib/customer-push";
+import { notifyCustomer } from "@/lib/customer-push";
 
-// Day-before reminders (and removing past waitlist days). Vercel runs this once a day (vercel.json → crons,
+// Day-before reminders (and removing past waitlist days and old inbox rows). Vercel runs this once a day (vercel.json → crons,
 // 15:00 UTC = 18:00 in Iraq): every customer with a confirmed booking
 // tomorrow (in the shop's time zone) gets a push on their profile's devices.
 //
@@ -19,6 +18,7 @@ const DAY = 24 * 60 * 60 * 1000;
 
 type Row = {
   id: string;
+  shop_id: string;
   starts_at: string;
   service_name: string | null;
   public_token: string;
@@ -37,9 +37,12 @@ export async function GET(request: NextRequest) {
   // Waitlist days that have passed (0016) go too.
   const { error: oldWaitError } = await admin.from("waitlist").delete().lt("date", addDays(todayKey("Asia/Baghdad", now), -1));
   if (oldWaitError) console.error("reminders: waitlist cleanup failed", oldWaitError);
+  // The customers' inbox (0019) keeps three months.
+  const { error: oldInboxError } = await admin.from("customer_notifications").delete().lt("created_at", new Date(now.getTime() - 90 * DAY).toISOString());
+  if (oldInboxError) console.error("reminders: inbox cleanup failed", oldInboxError);
   const { data, error } = await admin
     .from("appointments")
-    .select("id, starts_at, service_name, public_token, customers(user_id), shops(name, slug, timezone, status)")
+    .select("id, shop_id, starts_at, service_name, public_token, customers(user_id), shops(name, slug, timezone, status)")
     .eq("status", "confirmed")
     .is("reminded_at", null)
     .gt("starts_at", now.toISOString())
@@ -76,16 +79,14 @@ export async function GET(request: NextRequest) {
     if (!mine.has(r.id)) continue;
     const userId = r.customers?.user_id;
     // No profile, or no device with alerts on: nothing to send.
+    // Also writes the reminder to the customer's inbox, whether or not a device gets the push.
     const result = !userId || !r.shops
       ? { sent: 0 }
-      : await sendPush(
-          [userId],
-          customerMessage("reminder", {
-            id: r.id, token: r.public_token, shopName: r.shops.name, shopSlug: r.shops.slug,
-            timeZone: r.shops.timezone, service: r.service_name, startsAt: r.starts_at,
-          }),
-        ).catch((err) => {
-          console.error("reminders: push failed", r.id, err);
+      : await notifyCustomer(userId, "reminder", {
+          id: r.id, shopId: r.shop_id, token: r.public_token, shopName: r.shops.name, shopSlug: r.shops.slug,
+          timeZone: r.shops.timezone, service: r.service_name, startsAt: r.starts_at,
+        }).catch((err) => {
+          console.error("reminders: notification failed", r.id, err);
           return { sent: 0 };
         });
     if (result.sent > 0) sent++;

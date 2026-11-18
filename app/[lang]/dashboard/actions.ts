@@ -24,8 +24,7 @@ import { getActionI18n } from "@/lib/i18n/request";
 import type { Lang } from "@/lib/i18n/config";
 import { DICTS } from "@/lib/i18n/dictionaries";
 import type { AppointmentStatus } from "@/lib/types";
-import { sendPush } from "@/lib/push";
-import { customerEvent, customerMessage, type BookingForPush } from "@/lib/customer-push";
+import { customerEvent, notifyCustomer, type BookingForPush } from "@/lib/customer-push";
 import { notifyWaitlist } from "@/lib/waitlist.server";
 
 // Every action re-checks the user and their role (requireShop) and scopes
@@ -307,10 +306,11 @@ export async function setAppointmentStatus(id: string, status: AppointmentStatus
   const event = customerEvent(before.status as AppointmentStatus, status);
   if (userId && event) {
     const booking: BookingForPush = {
-      id, token: before.public_token, shopName: shop.name, shopSlug: shop.slug, timeZone: shop.timezone,
+      id, shopId: shop.id, token: before.public_token, shopName: shop.name, shopSlug: shop.slug, timeZone: shop.timezone,
       service: before.service_name, startsAt: before.starts_at,
     };
-    after(() => sendPush([userId], customerMessage(event, booking)).catch((err) => console.error("customer push failed", err)));
+    // Inbox row + push (lib/customer-push.ts).
+    after(() => notifyCustomer(userId, event, booking).catch((err) => console.error("customer notification failed", err)));
   }
   // A time opened: tell the people waiting for that day (0016 waitlist).
   if (status === "cancelled" && (before.status === "pending" || before.status === "confirmed")) {

@@ -1,9 +1,9 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPush } from "@/lib/push";
-import { fill, fmt } from "@/lib/format";
+import { fmt } from "@/lib/format";
 import { localePath } from "@/lib/i18n/config";
-import { DICTS } from "@/lib/i18n/dictionaries";
+import { waitlistPath, waitlistText } from "@/lib/customer-push";
 
 // The waitlist (0016): when a booking is cancelled, everyone waiting for that
 // day at that shop gets a push that opens the booking page on that day. The
@@ -33,18 +33,20 @@ export async function notifyWaitlist(freed: { shopId: string; staffId: string; s
   if (waiting.length === 0) return 0;
 
   await admin.from("waitlist").update({ notified_at: new Date().toISOString() }).in("id", waiting.map((w) => w.id));
+
+  // The inbox (0019) first: it works with no push device. A failure here never stops the pushes.
+  const { error: inboxError } = await admin.from("customer_notifications").insert(
+    waiting.map((w) => ({ user_id: w.user_id as string, shop_id: freed.shopId, kind: "waitlist", for_date: dateKey, service_id: w.service_id as string | null })),
+  );
+  if (inboxError) console.error("waitlist inbox write failed", inboxError);
+
   await Promise.all(
     waiting.map((w) =>
-      sendPush([w.user_id as string], (lang) => {
-        const p = DICTS[lang].push;
-        const query = `date=${dateKey}${w.service_id ? `&service=${w.service_id}` : ""}`;
-        return {
-          title: fill(p.waitlistTitle, { shop: shop.name }),
-          body: fill(p.waitlistBody, { date: fmt(lang).date(dateKey) }),
-          url: localePath(lang, `/s/${shop.slug}/book?${query}`),
-          tag: `waitlist-${freed.shopId}-${dateKey}`,
-        };
-      }).catch((err) => console.error("waitlist push failed", err)),
+      sendPush([w.user_id as string], (lang) => ({
+        ...waitlistText(lang, shop.name, dateKey),
+        url: localePath(lang, waitlistPath(shop.slug, dateKey, w.service_id as string | null)),
+        tag: `waitlist-${freed.shopId}-${dateKey}`,
+      })).catch((err) => console.error("waitlist push failed", err)),
     ),
   );
   return waiting.length;

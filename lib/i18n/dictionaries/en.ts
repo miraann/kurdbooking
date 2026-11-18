@@ -497,6 +497,35 @@ const en: Dict = {
     androidApp: "Download the Android app",
   },
 
+  // ── Customer app: bottom tab bar, favourites and notifications pages ──────
+  customerNav: {
+    label: "App navigation",
+    home: "Home",
+    favorites: "Favourites",
+    notifications: "Alerts",
+    profile: "Profile",
+    unread: "{n} unread notifications",
+    signIn: "Log in or create a profile",
+  },
+  favoritesPage: {
+    metaTitle: "Favourite shops",
+    title: "My favourite shops",
+    subtitle: "The shops you tapped the heart on, one tap away.",
+    guestText: "Log in to save your favourite shops and find them here.",
+    empty: "You haven't saved any shop yet.",
+    emptyHelp: "Tap the heart ♥ on any shop page and it shows up here.",
+    browse: "Browse shops",
+  },
+  notificationsPage: {
+    metaTitle: "Notifications",
+    title: "Notifications",
+    subtitle: "Everything the shops told you about your bookings.",
+    guestText: "Log in to see your notifications.",
+    empty: "No notifications yet.",
+    emptyHelp: "When a shop confirms your booking, or the day before it, it shows up here.",
+    newOne: "New",
+  },
+
   push: {
     title: "Notifications",
     onHelp: "Alerts (new bookings, new orders) come to this device.",
