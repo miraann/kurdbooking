@@ -81,7 +81,10 @@ const nextConfig: NextConfig = {
  * scripts, and the bridge script the Capacitor app injects). What it still
  * blocks: scripts, frames and connections to other sites, plugins, <base>
  * tricks, forms posting elsewhere, and other sites framing our pages.
- * Images come from Supabase Storage only, plus the map tiles.
+ * Images come from Supabase Storage only. The map tab (components/map/ShopMap.tsx) adds three things:
+ * its vector tiles and fonts from OpenFreeMap (connect-src), its drawing worker (worker-src blob:),
+ * and WebAssembly for the right-to-left text plugin that shapes Kurdish and Arabic names
+ * (script-src 'wasm-unsafe-eval': WebAssembly only, not eval of strings).
  */
 function contentSecurityPolicy(): string {
   const dev = process.env.NODE_ENV !== "production";
@@ -95,13 +98,12 @@ function contentSecurityPolicy(): string {
   const live = preview ? " https://vercel.live" : "";
   return [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""}${live}`,
+    `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${dev ? " 'unsafe-eval'" : ""}${live}`,
     "style-src 'self' 'unsafe-inline'",
-    // tile.openstreetmap.org: the map tab's map tiles (components/map/ShopMap.tsx).
-    `img-src 'self' data: blob: ${supabase} https://tile.openstreetmap.org${preview ? " https://vercel.live https://vercel.com" : ""}`.trim(),
+    `img-src 'self' data: blob: ${supabase}${preview ? " https://vercel.live https://vercel.com" : ""}`.trim(),
     "font-src 'self'",
-    `connect-src 'self' ${supabase}${dev ? " ws: wss:" : ""}${preview ? " https://vercel.live wss://ws-us3.pusher.com" : ""}`.trim(),
-    "worker-src 'self'",
+    `connect-src 'self' ${supabase} https://tiles.openfreemap.org${dev ? " ws: wss:" : ""}${preview ? " https://vercel.live wss://ws-us3.pusher.com" : ""}`.trim(),
+    "worker-src 'self' blob:",
     "manifest-src 'self'",
     `frame-src ${preview ? "https://vercel.live" : "'none'"}`,
     "frame-ancestors 'self'",

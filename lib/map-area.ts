@@ -11,6 +11,7 @@ export const MAP_AREA = {
    * outside it (the smallest zoom is worked out from the screen so that the box fills it, see
    * ShopMap), and a branch outside it gets no pin.
    */
+  // (MapLibre zoom levels: 512px tiles, so every level is one step closer than a 256px map's)
   bounds: { south: 35.49, west: 45.3, north: 35.63, east: 45.52 },
   /** Never zoom out further than this, whatever the screen size. */
   minZoom: 11,

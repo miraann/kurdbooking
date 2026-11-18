@@ -514,6 +514,7 @@ const en: Dict = {
     empty: "No shop has put its location on the map yet.",
     directions: "Directions",
     close: "Close",
+    failed: "The map could not open on this device. Try a newer version of the app or browser.",
   },
   favoritesPage: {
     metaTitle: "Favourite shops",

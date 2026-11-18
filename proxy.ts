@@ -131,7 +131,8 @@ export const config = {
   matcher: [
     // Everything except Next internals and static files.
     // sw.js (push alerts) must stay at the site root, not under a language.
+    // vendor/: scripts we host ourselves for the map tab (public/vendor).
     // .apk: the customer Android app download (public/kurdbooking.apk).
-    "/((?!_next/static|_next/image|favicon\\.ico|sw\\.js|font/|icons/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|otf|txt|xml|json|webmanifest|apk)$).*)",
+    "/((?!_next/static|_next/image|favicon\\.ico|sw\\.js|font/|icons/|vendor/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|otf|txt|xml|json|webmanifest|apk)$).*)",
   ],
 };

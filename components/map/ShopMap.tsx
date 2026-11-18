@@ -3,109 +3,169 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { MapPin as PinIcon, Navigation, X } from "lucide-react";
-import type { Map as LeafletMap, Marker } from "leaflet";
-import "leaflet/dist/leaflet.css";
+import type { Map as MapLibreMap, Marker, StyleSpecification } from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import "./map.css";
+import style from "./style.json";
 import { MAP_AREA } from "@/lib/map-area";
 import type { MapPin } from "@/lib/types";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { LogoRing } from "@/components/shop/theme";
 import { Stars } from "@/components/ui/Stars";
 
-// The customer app's map: Sulaymaniyah city only (lib/map-area.ts: the view can't leave it), every listed
-// shop's branch as a pin (its logo in the two-colour ring), a card with «view &
-// book» and «directions» when a pin is tapped. Leaflet + OpenStreetMap tiles: no
-// account or key. The tile address is the one place to change if OpenStreetMap's
-// usage limits are ever outgrown; its host is listed in the CSP (next.config.ts).
+// The customer app's map: Sulaymaniyah city only (lib/map-area.ts: the view can't leave it), and
+// only KurdBooking's own shops on it: every listed shop's branch is a pin (its logo in the
+// two-colour ring); tapping one opens a card with «view & book» and «directions».
+//
+// The base map is OpenFreeMap's «Positron» street map (vector tiles, free, no key) in ./style.json,
+// with its business layers and every icon removed (lib/map-style.test.mjs checks it): streets,
+// buildings, parks, water and names, and no cafes, hotels, gyms or other places. Kurdish and Arabic
+// names need MapLibre's right-to-left text plugin, served from /vendor (public/vendor).
+// Hosts used: tiles.openfreemap.org (next.config.ts lists them in the CSP).
 
-const TILES = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const RTL_PLUGIN = "/vendor/mapbox-gl-rtl-text.js";
 
-const ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ESCAPES[c]);
+// MapLibre draws 512px tiles: the world is 512 · 2^zoom pixels wide.
+const mercatorY = (lat: number) => 0.5 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / (2 * Math.PI);
 
-/** The pin's HTML. Shop names and logo addresses are owner input: always escaped. */
-function pinHtml(p: MapPin, selected: boolean): string {
-  const face = p.logoUrl ? `<img src="${esc(p.logoUrl)}" alt="" draggable="false">` : esc(Array.from(p.name.trim())[0]?.toUpperCase() ?? "•");
-  return `<div class="kb-pin${selected ? " kb-pin-selected" : ""}"><div class="kb-pin-ring"><div class="kb-pin-face">${face}</div></div><div class="kb-pin-tail"></div></div>`;
+/** The smallest zoom at which the city's box still covers the whole screen (nothing outside it is ever visible). */
+function coverZoom(width: number, height: number): number {
+  const b = MAP_AREA.bounds;
+  const dx = (b.east - b.west) / 360;
+  const dy = mercatorY(b.south) - mercatorY(b.north);
+  const z = Math.max(Math.log2(width / (512 * dx)), Math.log2(height / (512 * dy)));
+  return Math.min(Math.max(z, MAP_AREA.minZoom), MAP_AREA.maxZoom - 1);
 }
 
-const PIN_W = 48;
-const PIN_H = 58; // the ring plus the tail
+const el = (cls: string) => {
+  const d = document.createElement("div");
+  d.className = cls;
+  return d;
+};
+
+/** One pin: the shop's logo (or its first letter) in the ring, with a tail. Built without innerHTML: names and logo addresses are owner input. */
+function pinElement(pin: MapPin, onChoose: () => void): HTMLElement {
+  const wrap = el("kb-pin-wrap"); // MapLibre positions this one…
+  wrap.setAttribute("role", "button");
+  wrap.tabIndex = 0;
+  wrap.setAttribute("aria-label", pin.name);
+  const inner = el("kb-pin"); // …so the look and the «chosen» size live on this one
+  const face = el("kb-pin-face");
+  if (pin.logoUrl) {
+    const img = document.createElement("img");
+    img.src = pin.logoUrl;
+    img.alt = "";
+    img.draggable = false;
+    face.append(img);
+  } else {
+    face.textContent = Array.from(pin.name.trim())[0]?.toUpperCase() ?? "•";
+  }
+  const ring = el("kb-pin-ring");
+  ring.append(face);
+  inner.append(ring, el("kb-pin-tail"));
+  wrap.append(inner);
+  // stopPropagation: a tap on a pin must not count as a tap on the empty map (which closes the card).
+  wrap.addEventListener("click", (e) => {
+    e.stopPropagation();
+    onChoose();
+  });
+  wrap.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onChoose();
+    }
+  });
+  return wrap;
+}
 
 export function ShopMap({ pins }: { pins: MapPin[] }) {
   const { t, f, href } = useI18n();
-  const el = useRef<HTMLDivElement>(null);
-  const markers = useRef(new Map<string, { marker: Marker; pin: MapPin }>());
-  const map = useRef<LeafletMap | null>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const markers = useRef(new Map<string, Marker>());
   const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // Draw the map once. Leaflet needs the window, so it is loaded here, not at import time.
+  // Draw the map once. MapLibre needs the window and WebGL, so it is loaded here, not at import time.
   useEffect(() => {
     let cancelled = false;
+    let map: MapLibreMap | undefined;
     const drawn = markers.current;
     (async () => {
-      const L = (await import("leaflet")).default;
-      if (cancelled || !el.current) return;
+      try {
+        const mod = await import("maplibre-gl");
+        const ml = (mod as unknown as { default?: typeof mod }).default ?? mod;
+        if (cancelled || !box.current) return;
+        if (ml.getRTLTextPluginStatus() === "unavailable") {
+          ml.setRTLTextPlugin(`${window.location.origin}${RTL_PLUGIN}`, true).catch(() => {}); // only fetched when Kurdish/Arabic names are drawn
+        }
 
-      const b = MAP_AREA.bounds;
-      const city = L.latLngBounds([b.south, b.west], [b.north, b.east]);
-      const m = L.map(el.current, {
-        center: [MAP_AREA.center.lat, MAP_AREA.center.lng],
-        zoom: MAP_AREA.zoom,
-        minZoom: MAP_AREA.minZoom,
-        maxZoom: MAP_AREA.maxZoom,
-        zoomSnap: 0.5, // half steps: the city's box fits the screen closely
-        // Sulaymaniyah only: the view can't leave the city's box…
-        maxBounds: city,
-        maxBoundsViscosity: 1,
-        zoomControl: false,
-        attributionControl: false,
-      });
-      // …and can't zoom out to where the box no longer fills the screen (a tall phone shows less
-      // of the city than a wide tablet). Worked out again when the screen turns or resizes.
-      const fitMinZoom = () => m.setMinZoom(Math.min(Math.max(m.getBoundsZoom(city, true), MAP_AREA.minZoom), MAP_AREA.maxZoom - 1));
-      fitMinZoom();
-      m.on("resize", fitMinZoom);
-      if (m.getZoom() < m.getMinZoom()) m.setZoom(m.getMinZoom(), { animate: false });
-      L.control.zoom({ position: "topright" }).addTo(m);
-      L.control.attribution({ position: "topleft", prefix: false }).addTo(m);
-      L.tileLayer(TILES, { maxZoom: MAP_AREA.maxZoom, attribution: "© OpenStreetMap" }).addTo(m);
+        const b = MAP_AREA.bounds;
+        const m = new ml.Map({
+          container: box.current,
+          style: style as unknown as StyleSpecification,
+          center: [MAP_AREA.center.lng, MAP_AREA.center.lat],
+          zoom: MAP_AREA.zoom,
+          minZoom: MAP_AREA.minZoom,
+          maxZoom: MAP_AREA.maxZoom,
+          // Sulaymaniyah only: the view can't leave the city's box…
+          maxBounds: [[b.west, b.south], [b.east, b.north]],
+          renderWorldCopies: false,
+          // …and the map stays flat: no rotating or tilting by accident.
+          dragRotate: false,
+          pitchWithRotate: false,
+          touchPitch: false,
+          attributionControl: false,
+        });
+        map = m;
+        m.touchZoomRotate.disableRotation();
+        m.addControl(new ml.NavigationControl({ showCompass: false }), "top-right");
+        // At the top: the tab bar floats over the bottom of the map. OpenFreeMap and OpenStreetMap ask for it.
+        m.addControl(new ml.AttributionControl({ compact: false }), "top-left");
 
-      for (const pin of pins) {
-        const marker = L.marker([pin.lat, pin.lng], {
-          icon: L.divIcon({ html: pinHtml(pin, false), className: "kb-pin-wrap", iconSize: [PIN_W, PIN_H], iconAnchor: [PIN_W / 2, PIN_H] }),
-          title: pin.name,
-          keyboard: true,
-        }).addTo(m);
-        marker.on("click", () => setSelectedId(pin.locationId));
-        drawn.set(pin.locationId, { marker, pin });
+        // …and can't zoom out to where the box no longer fills the screen (a tall phone shows less of the city
+        // than a wide tablet). Worked out again when the screen turns or resizes.
+        const fitMinZoom = () => {
+          const c = m.getContainer();
+          m.setMinZoom(coverZoom(c.clientWidth, c.clientHeight));
+        };
+        fitMinZoom();
+        m.on("resize", fitMinZoom);
+
+        for (const pin of pins) {
+          const marker = new ml.Marker({ element: pinElement(pin, () => setSelectedId(pin.locationId)), anchor: "bottom" })
+            .setLngLat([pin.lng, pin.lat])
+            .addTo(m);
+          drawn.set(pin.locationId, marker);
+        }
+        m.on("click", () => setSelectedId(null));
+
+        if (pins.length > 0) {
+          const bounds = new ml.LngLatBounds();
+          for (const p of pins) bounds.extend([p.lng, p.lat]);
+          m.fitBounds(bounds, { padding: 70, maxZoom: 16, duration: 0 });
+        }
+        m.once("load", () => setReady(true));
+      } catch {
+        // No WebGL (a very old or restricted WebView): say so instead of leaving a blank screen.
+        if (!cancelled) setFailed(true);
       }
-      m.on("click", () => setSelectedId(null));
-
-      if (pins.length > 0) m.fitBounds(L.latLngBounds(pins.map((p) => [p.lat, p.lng] as [number, number])), { padding: [70, 70], maxZoom: 16 });
-      map.current = m;
-      setReady(true);
     })();
     return () => {
       cancelled = true;
-      map.current?.remove();
-      map.current = null;
+      map?.remove();
       drawn.clear();
     };
   }, [pins]);
 
   // The chosen pin grows and comes to the front.
   useEffect(() => {
-    if (!ready) return;
-    void (async () => {
-      const L = (await import("leaflet")).default;
-      for (const [id, { marker, pin }] of markers.current) {
-        const on = id === selectedId;
-        marker.setIcon(L.divIcon({ html: pinHtml(pin, on), className: "kb-pin-wrap", iconSize: [PIN_W, PIN_H], iconAnchor: [PIN_W / 2, PIN_H] }));
-        marker.setZIndexOffset(on ? 1000 : 0);
-      }
-    })();
+    for (const [id, marker] of markers.current) {
+      const on = id === selectedId;
+      const wrap = marker.getElement();
+      wrap.firstElementChild?.classList.toggle("kb-pin-selected", on);
+      wrap.style.zIndex = on ? "10" : "";
+    }
   }, [selectedId, ready]);
 
   const pin = pins.find((p) => p.locationId === selectedId) ?? null;
@@ -113,11 +173,21 @@ export function ShopMap({ pins }: { pins: MapPin[] }) {
   const where = pin ? [pin.locationName, pin.address, pin.city].filter(Boolean).join(" · ") : "";
 
   return (
-    // isolate: Leaflet's own z-indexes (up to 1000) stay inside the map, under the header and the tab bar.
+    // isolate: the map's own z-indexes stay inside it, under the header and the tab bar.
     <div className="kb-map relative isolate size-full overflow-hidden bg-neutral-100">
-      <div ref={el} dir="ltr" role="application" aria-label={t.mapPage.label} className="absolute inset-0" />
+      {/* MapLibre's own stylesheet makes its container position:relative (and unlayered CSS beats
+          Tailwind's), so the map can't be the absolutely placed element itself: it fills this one. */}
+      <div className="absolute inset-0">
+        <div ref={box} dir="ltr" role="application" aria-label={t.mapPage.label} className="size-full" />
+      </div>
 
-      {!ready && <div className="absolute inset-0 z-[1100] animate-pulse bg-neutral-100" aria-hidden />}
+      {!ready && !failed && <div className="absolute inset-0 z-[1100] animate-pulse bg-neutral-100" aria-hidden />}
+
+      {failed && (
+        <p className="absolute inset-x-4 top-1/3 z-[1100] mx-auto max-w-sm rounded-2xl bg-white px-4 py-3 text-center text-sm font-medium text-neutral-600 shadow-lg">
+          {t.mapPage.failed}
+        </p>
+      )}
 
       {ready && pins.length === 0 && (
         // At the bottom, above the tab bar: the top corners hold the zoom buttons and the attribution.

@@ -1,9 +1,16 @@
 /* Shop pins on the customer app's map (components/map/ShopMap.tsx). A pin is the shop's
-   logo in the same two-colour ring as everywhere else, with a small tail pointing at the spot. */
+   logo in the same two-colour ring as everywhere else, with a small tail pointing at the spot.
+   .kb-pin-wrap is the element MapLibre moves around; .kb-pin inside it carries the look and the
+   «chosen» size (MapLibre owns the wrapper's transform, so the size change can't go there). */
 
 .kb-pin-wrap {
-  background: none;
-  border: 0;
+  width: 48px;
+  height: 58px; /* the ring plus the tail */
+  cursor: pointer;
+  outline: none;
+}
+.kb-pin-wrap:focus-visible .kb-pin {
+  filter: drop-shadow(0 0 0 #fff) drop-shadow(0 0 3px var(--shop-primary)) drop-shadow(0 4px 6px rgb(15 23 42 / 0.3));
 }
 
 .kb-pin {
@@ -65,22 +72,25 @@
   border-top: 10px solid var(--shop-primary);
 }
 
-/* The attribution OpenStreetMap asks for, readable on the white page. */
-.kb-map .leaflet-control-attribution {
+/* The credits OpenFreeMap and OpenStreetMap ask for: small, at the top, readable on the white page. */
+.kb-map .maplibregl-ctrl-attrib {
   border-radius: 9999px;
   padding: 1px 8px;
   font-size: 10px;
   background: rgb(255 255 255 / 0.85);
 }
-.kb-map .leaflet-control-zoom {
-  border: 0;
+.kb-map .maplibregl-ctrl-top-left .maplibregl-ctrl {
+  margin: 8px 0 0 8px;
+}
+.kb-map .maplibregl-ctrl-top-right .maplibregl-ctrl {
+  margin: 12px 12px 0 0;
+}
+.kb-map .maplibregl-ctrl-group {
   border-radius: 1rem;
   overflow: hidden;
   box-shadow: 0 4px 14px rgb(15 23 42 / 0.18);
 }
-.kb-map .leaflet-control-zoom a {
+.kb-map .maplibregl-ctrl-group button {
   width: 38px;
   height: 38px;
-  line-height: 38px;
-  color: #404040;
 }

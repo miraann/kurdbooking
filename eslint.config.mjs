@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Native wrappers have their own packages and build tools.
     "native/**",
+    // Third-party files we host ourselves (the map's right-to-left text plugin), not our code.
+    "public/vendor/**",
   ]),
 ]);
 
