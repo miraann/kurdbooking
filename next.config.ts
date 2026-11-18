@@ -81,7 +81,7 @@ const nextConfig: NextConfig = {
  * scripts, and the bridge script the Capacitor app injects). What it still
  * blocks: scripts, frames and connections to other sites, plugins, <base>
  * tricks, forms posting elsewhere, and other sites framing our pages.
- * Images come from Supabase Storage only.
+ * Images come from Supabase Storage only, plus the map tiles.
  */
 function contentSecurityPolicy(): string {
   const dev = process.env.NODE_ENV !== "production";
@@ -97,7 +97,8 @@ function contentSecurityPolicy(): string {
     "default-src 'self'",
     `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""}${live}`,
     "style-src 'self' 'unsafe-inline'",
-    `img-src 'self' data: blob: ${supabase}${preview ? " https://vercel.live https://vercel.com" : ""}`.trim(),
+    // tile.openstreetmap.org: the map tab's map tiles (components/map/ShopMap.tsx).
+    `img-src 'self' data: blob: ${supabase} https://tile.openstreetmap.org${preview ? " https://vercel.live https://vercel.com" : ""}`.trim(),
     "font-src 'self'",
     `connect-src 'self' ${supabase}${dev ? " ws: wss:" : ""}${preview ? " https://vercel.live wss://ws-us3.pusher.com" : ""}`.trim(),
     "worker-src 'self'",

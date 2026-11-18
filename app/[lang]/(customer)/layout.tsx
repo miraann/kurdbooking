@@ -17,8 +17,9 @@ import { CustomerHeaderLinks, CustomerTabBar } from "@/components/customer/Custo
 export default async function CustomerLayout({ children }: LayoutProps<"/[lang]">) {
   const { href } = await getI18n();
   return (
-    // max-md:pb-28: room for the tab bar under the page's last line.
-    <div className="relative isolate flex min-h-dvh flex-col text-neutral-900 max-md:pb-28">
+    // max-md:pb-28: room for the tab bar under the page's last line. The map page (data-map-page)
+    // fills the screen instead, so it gets neither the padding nor the footer.
+    <div className="relative isolate flex min-h-dvh flex-col text-neutral-900 max-md:pb-28 max-md:has-[[data-map-page]]:pb-0 [&:has([data-map-page])>footer]:hidden">
       <StripeBackground />
       <header className="sticky top-0 z-50 border-b border-neutral-200 bg-white/90 shadow-sm backdrop-blur-md">
         <ShopStrip />

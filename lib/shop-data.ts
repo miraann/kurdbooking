@@ -2,8 +2,9 @@ import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
 import { env } from "@/lib/env";
+import { inMapArea } from "@/lib/map-area";
 import type {
-  GalleryPhoto, Location, Post, PublicReview, PublicShop, Service, ShopKind, ShopProfile, SocialLink, Staff, WorkingHours,
+  GalleryPhoto, Location, MapPin, Post, PublicReview, PublicShop, Service, ShopKind, ShopProfile, SocialLink, Staff, WorkingHours,
 } from "@/lib/types";
 
 // Cached reads for the public shop pages. They use the public client (no
@@ -61,6 +62,38 @@ export async function getListedShops(kind: "barber" | "salon" | null, search: st
     ...s,
     rating_avg: s.rating_avg == null ? null : Number(s.rating_avg),
   }));
+}
+
+/** The branches to pin on the map: listed live shops, Sulaymaniyah city only (lib/map-area.ts). */
+export async function getMapPins(): Promise<MapPin[]> {
+  "use cache";
+  cacheLife("minutes");
+  cacheTag(LISTED_SHOPS_TAG); // any location, listing or branding change refreshes the map too
+
+  const { data, error } = await createPublicClient().rpc("map_shops");
+  if (error) throw error;
+  type Row = {
+    shop_id: string; slug: string; name: string; kind: ShopKind; logo_url: string | null;
+    rating_avg: number | string | null; rating_count: number;
+    location_id: string; location_name: string; address: string | null; city: string | null; lat: number; lng: number;
+  };
+  return ((data ?? []) as Row[])
+    .filter((r) => inMapArea(r.lat, r.lng))
+    .map((r) => ({
+      shopId: r.shop_id,
+      slug: r.slug,
+      name: r.name,
+      kind: r.kind,
+      logoUrl: r.logo_url,
+      rating: r.rating_avg == null ? null : Number(r.rating_avg),
+      ratingCount: r.rating_count,
+      locationId: r.location_id,
+      locationName: r.location_name,
+      address: r.address,
+      city: r.city,
+      lat: r.lat,
+      lng: r.lng,
+    }));
 }
 
 export interface ShopReviews {

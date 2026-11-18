@@ -45,7 +45,7 @@ await db.exec(`
 `);
 
 // 0006 (pg_cron schedule) needs the cron extension, which PGlite doesn't have.
-for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql', '0009_shop_requests.sql', '0010_web_push.sql', '0011_native_push.sql', '0012_rate_limits.sql', '0013_favorites.sql', '0014_reminders.sql', '0015_staff_logins.sql', '0016_waitlist.sql', '0017_notification_sound.sql', '0018_phone_codes.sql', '0019_customer_notifications.sql']) {
+for (const f of ['0001_platform.sql', '0002_shop_content.sql', '0003_booking.sql', '0004_functions.sql', '0005_rls.sql', '0007_blocked_hours.sql', '0008_customer_app.sql', '0009_shop_requests.sql', '0010_web_push.sql', '0011_native_push.sql', '0012_rate_limits.sql', '0013_favorites.sql', '0014_reminders.sql', '0015_staff_logins.sql', '0016_waitlist.sql', '0017_notification_sound.sql', '0018_phone_codes.sql', '0019_customer_notifications.sql', '0020_map_shops.sql']) {
   try { await db.exec(readFileSync(new URL(f, MIG), 'utf8')); console.log('applied', f); }
   catch (e) { console.log('MIGRATION FAILED', f, e.message, e.position ?? ''); process.exit(1); }
 }
@@ -518,6 +518,38 @@ ok('customer deletes one notification', (await db.query(`delete from public.cust
 await as(null);
 await db.query(`delete from public.appointments where id=$1`, [inAppt.id]);
 ok('deleting a booking removes its notifications', (await db.query(`select count(*)::int c from public.customer_notifications`)).rows[0].c === 0);
+
+// ── Shops on the map (0020) ─────────────────────────────────────────────────
+await as(null);
+const [mapStatusA, mapStatusB] = [await statusOf(shopA), await statusOf(shopB)];
+await db.query(`update public.shops set status='active', listed=true, hidden_by_admin=false where id in ($1,$2)`, [shopA, shopB]);
+const pin = (shop, name, lat, lng) => db.query(`insert into public.locations (shop_id, name, address, city, lat, lng, phone, maps_url) values ($1,$2,'Salim St','Sulaimani',$3,$4,'07701234567','https://maps.app.goo.gl/x')`, [shop, name, lat, lng]);
+await pin(shopA, 'Main', 35.5558, 45.4351);
+await pin(shopA, 'Second', 35.57, 45.45);
+await pin(shopA, 'No pin', null, null);
+await db.query(`insert into public.locations (shop_id, name, lat) values ($1,'Half a pin',35.5)`, [shopA]);
+await pin(shopB, 'Salon', 35.56, 45.44);
+await as('anon');
+const pins = (await db.query(`select * from public.map_shops()`)).rows;
+ok('anon sees every branch that has a pin', pins.length === 3 && pins.filter((p) => p.name === 'Ali Barber').length === 2, JSON.stringify(pins.map((p) => [p.name, p.location_name])));
+ok('a branch without both coordinates is not on the map', !pins.some((p) => ['No pin', 'Half a pin'].includes(p.location_name)));
+ok('a pin carries what its card shows', pins[0].slug === 'ali-barber' && pins[0].kind === 'barber' && pins[0].city === 'Sulaimani' && pins[0].lat === 35.5558 && pins[0].rating_count === 0, JSON.stringify(pins[0]));
+ok('a pin does not leak phones or map links', !('phone' in pins[0]) && !('maps_url' in pins[0]));
+await as('authenticated', users.kawa);
+ok('customers see the same pins', (await db.query(`select * from public.map_shops()`)).rows.length === 3);
+await as(null);
+await db.query(`update public.shops set listed=false where id=$1`, [shopB]);
+await db.query(`update public.shops set hidden_by_admin=true where id=$1`, [shopA]);
+await as('anon');
+ok('unlisted and admin-hidden shops are off the map', (await db.query(`select * from public.map_shops()`)).rows.length === 0);
+await as(null);
+await db.query(`update public.shops set listed=true, hidden_by_admin=false, status='suspended' where id=$1`, [shopB]);
+await as('anon');
+ok('a closed shop is off the map', (await db.query(`select * from public.map_shops()`)).rows.every((p) => p.name === 'Ali Barber'));
+await as(null);
+await db.query(`delete from public.locations where shop_id in ($1,$2)`, [shopA, shopB]);
+await db.query(`update public.shops set status=$2 where id=$1`, [shopA, mapStatusA]);
+await db.query(`update public.shops set status=$2 where id=$1`, [shopB, mapStatusB]);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

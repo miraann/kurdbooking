@@ -251,3 +251,21 @@ export interface PlatformSettings {
   grace_days: number;
   support_whatsapp: string | null;
 }
+
+/** One pin on the customer app's map: a branch of a listed shop (0020 map_shops). */
+export interface MapPin {
+  shopId: string;
+  slug: string;
+  name: string;
+  kind: ShopKind;
+  logoUrl: string | null;
+  rating: number | null;
+  ratingCount: number;
+  /** Several branches of one shop have the same shop and different location ids. */
+  locationId: string;
+  locationName: string;
+  address: string | null;
+  city: string | null;
+  lat: number;
+  lng: number;
+}

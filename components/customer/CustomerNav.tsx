@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Heart, House, UserRound, type LucideIcon } from "lucide-react";
+import { Bell, Heart, House, MapPin, UserRound, type LucideIcon } from "lucide-react";
 import { splitLocale } from "@/lib/i18n/config";
 import { fill } from "@/lib/format";
 import { useI18n } from "@/components/i18n/I18nProvider";
@@ -11,13 +11,14 @@ import { refreshUnread, useUnread } from "@/components/customer/unread";
 
 // The customer side's navigation: a native-style tab bar floating at the bottom
 // on phones (and in the customer app), plain links in the header from tablets
-// up. Four places: Home (the shop list), Favourites, Notifications, Profile.
+// up. Five places: Home (the shop list), Map, Favourites, Notifications, Profile.
 // Shop pages and booking have their own layout, so the bar is only on these
-// four, as in a native app.
+// five, as in a native app.
 
-type TabKey = "home" | "favorites" | "notifications" | "profile";
+type TabKey = "home" | "map" | "favorites" | "notifications" | "profile";
 const TABS: { key: TabKey; path: string; icon: LucideIcon }[] = [
   { key: "home", path: "/", icon: House },
+  { key: "map", path: "/map", icon: MapPin },
   { key: "favorites", path: "/favorites", icon: Heart },
   { key: "notifications", path: "/notifications", icon: Bell },
   { key: "profile", path: "/account", icon: UserRound },
@@ -105,13 +106,13 @@ function TabBarView({ pathname }: { pathname: string | null }) {
                 style={active ? { color: "var(--shop-primary)" } : undefined}
               >
                 <span
-                  className={`relative grid h-8 w-16 place-items-center rounded-full transition-colors duration-300 ${active ? "" : "group-active:bg-neutral-100"}`}
+                  className={`relative grid h-8 w-14 place-items-center rounded-full transition-colors duration-300 ${active ? "" : "group-active:bg-neutral-100"}`}
                   style={active ? { background: "color-mix(in srgb, var(--shop-primary) 13%, white)" } : undefined}
                 >
                   <Icon className={`size-[1.35rem] transition-transform duration-300 ${active ? "scale-110" : ""}`} strokeWidth={active ? 2.4 : 2} aria-hidden />
                   {key === "notifications" && <Badge className="end-2 top-0" />}
                 </span>
-                <span className={`max-w-full truncate px-1 text-[0.7rem] leading-none ${active ? "font-bold" : "font-medium"}`}>{t.customerNav[key]}</span>
+                <span className={`max-w-full truncate text-[0.66rem] leading-none ${active ? "font-bold" : "font-medium"}`}>{t.customerNav[key]}</span>
               </Link>
             </li>
           );

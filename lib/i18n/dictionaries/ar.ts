@@ -503,11 +503,19 @@ const ar: Dict = {
   customerNav: {
     label: "التنقل في التطبيق",
     home: "الرئيسية",
+    map: "الخريطة",
     favorites: "المفضلة",
     notifications: "الإشعارات",
     profile: "حسابي",
     unread: "{n} إشعارات غير مقروءة",
     signIn: "تسجيل الدخول أو إنشاء ملف شخصي",
+  },
+  mapPage: {
+    metaTitle: "المحلات على الخريطة",
+    label: "خريطة محلات السليمانية",
+    empty: "لم يضع أي محل موقعه على الخريطة بعد.",
+    directions: "الاتجاهات",
+    close: "إغلاق",
   },
   favoritesPage: {
     metaTitle: "المحلات المفضلة",

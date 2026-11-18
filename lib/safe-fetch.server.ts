@@ -15,7 +15,7 @@ export interface Fetched {
   body: Uint8Array<ArrayBuffer>;
 }
 
-async function resolvesToPublic(host: string): Promise<boolean> {
+export async function resolvesToPublic(host: string): Promise<boolean> {
   const bare = host.replace(/^\[|\]$/g, "");
   const literal = isIP(bare);
   if (literal) return isPublicIp(bare, literal as 4 | 6);

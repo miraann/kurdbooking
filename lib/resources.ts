@@ -165,9 +165,20 @@ export const RESOURCES: Record<ResourceKey, ResourceConfig> = {
       { name: "city", label: { ckb: "شار", ar: "المدينة", en: "City" }, type: "text", maxLength: 60 },
       {
         name: "maps_url", label: { ckb: "لینکی گووگڵ ماپ", ar: "رابط خرائط Google", en: "Google Maps link" }, type: "url",
-        help: { ckb: "لە گووگڵ ماپ «Share» بکە و لینکەکە لێرە دابنێ", ar: "اضغط «Share» في خرائط Google والصق الرابط هنا", en: "Tap «Share» in Google Maps and paste the link here" },
+        help: {
+          ckb: "لە گووگڵ ماپ «Share» بکە و لینکەکە لێرە دابنێ. دوکانەکەت بەم لینکە لەسەر نەخشەی ئەپ دەردەکەوێت.",
+          ar: "اضغط «Share» في خرائط Google والصق الرابط هنا. بهذا الرابط يظهر محلك على خريطة التطبيق.",
+          en: "Tap «Share» in Google Maps and paste the link here. Your shop appears on the app's map from this link.",
+        },
       },
-      { name: "lat", label: "Latitude", type: "number", step: "any", min: -90, max: 90 },
+      {
+        name: "lat", label: "Latitude", type: "number", step: "any", min: -90, max: 90,
+        help: {
+          ckb: "پێویست نییە: لە لینکی گووگڵ ماپەوە خۆکارانە وەردەگیرێت. تەنها ئەگەر لینکەکە نەیدا، بە دەست بینووسە.",
+          ar: "اختياري: تؤخذ تلقائياً من رابط خرائط Google. اكتبها يدوياً فقط إذا لم يعطِ الرابط موقعاً.",
+          en: "Optional: filled in from the Google Maps link. Type it only if the link doesn't give a position.",
+        },
+      },
       { name: "lng", label: "Longitude", type: "number", step: "any", min: -180, max: 180 },
       { name: "phone", label: L.phone, type: "tel" },
       { name: "is_primary", label: { ckb: "شوێنی سەرەکی", ar: "الموقع الرئيسي", en: "Main location" }, type: "checkbox" },

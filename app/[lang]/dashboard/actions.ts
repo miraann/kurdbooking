@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { echoValues, FieldError, MEDIA_BUCKET, parseFields, removeImages } from "@/lib/fields.server";
 import { safeFetch } from "@/lib/safe-fetch.server";
+import { coordsFromMapsLink } from "@/lib/maps-link.server";
 import { isAllowedUrl, isImageHost, isPageHost, metaContent, platformOf, sniffImage } from "@/lib/url-guard";
 import { allowAttempt } from "@/lib/rate-limit";
 import type { ActionState } from "@/lib/fields";
@@ -53,6 +54,15 @@ export async function saveResource(key: ResourceKey, _prev: ActionState, formDat
     const row = await parseFields(fields, formData, { lang, supabase, shopId: shop.id, isNew: !id });
     const problem = cfg.check?.(row);
     if (problem) throw new FieldError(t.errors[problem]);
+
+    // A branch's pin on the customer app's map: taken from the pasted Google Maps link when it
+    // has coordinates (a short link is opened first); otherwise the typed latitude/longitude stay.
+    if (key === "locations") {
+      const mapsUrl = typeof row.maps_url === "string" ? row.maps_url : "";
+      const pin = mapsUrl ? await coordsFromMapsLink(mapsUrl) : null;
+      if (pin) Object.assign(row, { lat: pin.lat, lng: pin.lng });
+      else if (row.lat == null || row.lng == null) Object.assign(row, { lat: null, lng: null }); // both or neither (a half pin is nothing)
+    }
 
     if (id) {
       let oldImage: string | null = null;

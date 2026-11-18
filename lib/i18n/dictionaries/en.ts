@@ -501,11 +501,19 @@ const en: Dict = {
   customerNav: {
     label: "App navigation",
     home: "Home",
+    map: "Map",
     favorites: "Favourites",
     notifications: "Alerts",
     profile: "Profile",
     unread: "{n} unread notifications",
     signIn: "Log in or create a profile",
+  },
+  mapPage: {
+    metaTitle: "Shops on the map",
+    label: "Map of Sulaymaniyah shops",
+    empty: "No shop has put its location on the map yet.",
+    directions: "Directions",
+    close: "Close",
   },
   favoritesPage: {
     metaTitle: "Favourite shops",
