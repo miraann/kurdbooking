@@ -24,6 +24,15 @@ const plugin = async () => (await import("@capacitor/push-notifications")).PushN
 
 let listening = false;
 
+/** The last native-push problem, shown on the alerts card (a silent failure looked like "…" forever). */
+export let nativeProblem = "";
+export const report = (where: string, e: unknown) => {
+  const text = e instanceof Error ? e.message : typeof e === "string" ? e : JSON.stringify(e);
+  nativeProblem = `${where}: ${text}`;
+  console.error("native push", nativeProblem);
+  if (typeof window !== "undefined") window.dispatchEvent(new Event("kb-native-push-problem"));
+};
+
 /** Listeners once per app start: save the token, open tapped alerts, show alerts that arrive while the app is open. */
 export async function listenNativePush(onForeground: (a: ForegroundAlert) => void): Promise<void> {
   if (!hasNativePush() || listening) return;
@@ -31,9 +40,11 @@ export async function listenNativePush(onForeground: (a: ForegroundAlert) => voi
   const push = await plugin();
 
   await push.addListener("registration", ({ value }) => {
-    saveNativePushToken(value, platform()).catch(() => {});
+    saveNativePushToken(value, platform())
+      .then((r) => { if (!r.ok) report("save token", r.message ?? "refused"); })
+      .catch((e) => report("save token", e));
   });
-  await push.addListener("registrationError", (err) => console.error("push registration", err));
+  await push.addListener("registrationError", (err) => report("registration", err.error));
   // Tapped in the tray (also when the tap started the app).
   await push.addListener("pushNotificationActionPerformed", ({ notification }) => {
     const url = (notification.data as { url?: string } | undefined)?.url;
@@ -59,7 +70,8 @@ export async function listenNativePush(onForeground: (a: ForegroundAlert) => voi
         visibility: 1,
         vibration: true,
         ...(res ? { sound: `${res}.wav` } : {}),
-      });
+        // One channel failing must not stop the others, or the registration after them.
+      }).catch((e) => report(`channel ${s.id}`, e));
     }
   }
 }

@@ -5,7 +5,7 @@ import { Bell, BellOff } from "lucide-react";
 import { useI18n } from "@/components/i18n/I18nProvider";
 import { removePushSubscription, savePushSubscription, sendTestPush } from "@/app/[lang]/push-actions";
 import { isDesktopApp } from "./DesktopAlerts";
-import { enableNativePush, hasNativePush, isNativeApp, nativeStatus } from "./native";
+import { enableNativePush, hasNativePush, isNativeApp, nativeProblem, nativeStatus } from "./native";
 
 type Status = "loading" | "unsupported" | "no-app-push" | "ios-install" | "denied" | "off" | "on";
 
@@ -58,8 +58,16 @@ export function PushAlerts({ publicKey, tone = "dashboard" }: { publicKey: strin
       if (isNativeApp() && !hasNativePush()) return set("no-app-push");
       if (isNativeApp()) {
         if (!cancelled) setNative(true);
-        const s = await nativeStatus();
-        return set(s === "granted" ? "on" : s === "denied" ? "denied" : "off");
+        try {
+          const s = await Promise.race([
+            nativeStatus(),
+            new Promise<never>((_, no) => setTimeout(() => no(new Error("no answer from the app (10 s)")), 10000)),
+          ]);
+          return set(s === "granted" ? "on" : s === "denied" ? "denied" : "off");
+        } catch (e) {
+          if (!cancelled) setMessage(e instanceof Error ? e.message : String(e));
+          return set("off");
+        }
       }
       const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
       const standalone =
@@ -85,12 +93,24 @@ export function PushAlerts({ publicKey, tone = "dashboard" }: { publicKey: strin
     };
   }, []);
 
+  // Problems from the native push set-up (token not saved, channel failed…).
+  useEffect(() => {
+    const show = () => setMessage(nativeProblem);
+    if (nativeProblem) show();
+    window.addEventListener("kb-native-push-problem", show);
+    return () => window.removeEventListener("kb-native-push-problem", show);
+  }, []);
+
   const turnOn = () =>
     start(async () => {
       setMessage("");
       if (native) {
-        const s = await enableNativePush();
-        setStatus(s === "granted" ? "on" : "denied");
+        try {
+          const s = await enableNativePush();
+          setStatus(s === "granted" ? "on" : "denied");
+        } catch (e) {
+          setMessage(e instanceof Error ? e.message : String(e));
+        }
         return;
       }
       const permission = await Notification.requestPermission();
