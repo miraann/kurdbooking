@@ -32,28 +32,28 @@ async function load() {
       ? { plugin: registerPlugin<BackgroundReliabilityPlugin>("BackgroundReliability") }
       : null,
   );
-  return (await loaded)?.plugin ?? null;
+  return await loaded; // still the wrapper: the plugin itself must not be returned from an async function
 }
 
 export const isBackgroundReliable = (s: BackgroundStatus) => s.ignoringBatteryOptimizations && !s.backgroundRestricted;
 
 /** null outside the app, or in an app without the plugin. */
 export async function getBackgroundStatus(): Promise<BackgroundStatus | null> {
-  const plugin = await load();
+  const plugin = (await load())?.plugin;
   return plugin ? plugin.getStatus() : null;
 }
 
 export async function requestIgnoreBatteryOptimizations(): Promise<BackgroundStatus | null> {
-  const plugin = await load();
+  const plugin = (await load())?.plugin;
   return plugin ? plugin.requestIgnoreBatteryOptimizations() : null;
 }
 
 export async function openAutostartSettings(): Promise<void> {
-  await (await load())?.openAutostartSettings();
+  await (await load())?.plugin.openAutostartSettings();
 }
 
 export async function openAppSettings(): Promise<void> {
-  await (await load())?.openAppSettings();
+  await (await load())?.plugin.openAppSettings();
 }
 
 /** The system "run in the background?" dialog, once per install, right after push is on. */
